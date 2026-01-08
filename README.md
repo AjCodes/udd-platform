@@ -1,6 +1,6 @@
 # 🚁 Universal Delivery Drone Platform
 
-A platform for autonomous delivery drones operated remotely by humans. Move anything—food, groceries, parcels, documents, medicine—while being monitored and assisted by remote operators.
+A platform for autonomous delivery drones operated remotely by humans. Move anything, food, groceries, parcels, documents, medicine, while being monitored and assisted by remote operators.
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
@@ -26,7 +26,7 @@ A platform for autonomous delivery drones operated remotely by humans. Move anyt
 
 ## Project Vision
 
-Create an inclusive, efficient delivery service that enables remote work opportunities for everyone—including elderly individuals and people with physical limitations—using only an internet connection.
+Create an inclusive, efficient delivery service that enables remote work opportunities for everyone, including elderly individuals and people with physical limitations, using only an internet connection.
 
 ## Architecture
 

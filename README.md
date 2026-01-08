@@ -16,7 +16,13 @@ A platform for autonomous delivery drones operated remotely by humans. Move anyt
 | Shared Package | [packages/shared/README.md](./packages/shared/README.md) | `backend` |
 | Drone Firmware | [firmware/README.md](./firmware/README.md) | `drone` |
 
-**Branches:** `main` → `develop` → `user-app` / `dashboard` / `backend` / `drone`
+**Branches:** 
+`main` Only merge when something is demo-ready
+`develop` Integration branch, merge and test features here
+`user-app` Customer app UI
+`dashboard` Operator dashboard UI
+`backend` API routes, Supabase, MQTT
+`drone` Drone firmware
 
 ## Project Vision
 

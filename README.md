@@ -7,11 +7,11 @@ A platform for autonomous delivery drones operated remotely by humans. Move anyt
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E)
 ![MQTT](https://img.shields.io/badge/MQTT-HiveMQ-orange)
 
-## 🎯 Project Vision
+## Project Vision
 
 Create an inclusive, efficient delivery service that enables remote work opportunities for everyone—including elderly individuals and people with physical limitations—using only an internet connection.
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -29,7 +29,7 @@ Create an inclusive, efficient delivery service that enables remote work opportu
               └─────────────┘
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 udd-platform/
@@ -48,7 +48,7 @@ udd-platform/
     └── esp32-cam/
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ udd-platform/
    cd apps/operator-dashboard && pnpm dev
    ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
@@ -106,7 +106,7 @@ udd-platform/
 | IoT Communication | MQTT (HiveMQ Cloud) |
 | Hardware | ESP32-CAM, GPS Module |
 
-## 📡 Communication Flow
+## Communication Flow
 
 ### User Request → Drone
 ```
@@ -118,7 +118,7 @@ User App → REST API → Supabase → MQTT Broker → Drone
 Drone → MQTT Broker → WebSocket Server → Operator Dashboard
 ```
 
-## 👥 Team Roles
+## Team Roles
 
 | Role | Responsibilities |
 |------|-----------------|
@@ -127,7 +127,7 @@ Drone → MQTT Broker → WebSocket Server → Operator Dashboard
 | Frontend (User App) | Login, delivery request UI, tracking |
 | Frontend (Dashboard) | Operator controls, live video, drone status |
 
-## 📋 Features
+## Features
 
 ### Must Have
 - [x] Project structure & dependencies
@@ -147,17 +147,17 @@ Drone → MQTT Broker → WebSocket Server → Operator Dashboard
 - [ ] Return-to-home on signal loss
 - [ ] Delivery history
 
-## 🔒 Security
+## Security
 
 - Environment variables for sensitive data
 - Row Level Security (RLS) on Supabase
 - Service role key only used server-side
 - MQTT authentication required
 
-## 📄 License
+## License
 
 This project is part of a student assignment at Fontys University of Applied Sciences.
 
 ---
 
-**Built with ❤️ by the UDD Team**
+

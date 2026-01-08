@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// For client-side usage (browser)
+// For client-side (browser) Safe Access
 export function createBrowserClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -8,7 +8,7 @@ export function createBrowserClient() {
     return createClient(supabaseUrl, supabaseAnonKey);
 }
 
-// For server-side usage (API routes)
+// For server-side (API routes) Admin Access
 export function createServerClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

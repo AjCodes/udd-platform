@@ -17,7 +17,7 @@ A platform for autonomous delivery drones operated remotely by humans. Move anyt
 | Drone Firmware | [firmware/README.md](./firmware/README.md) | `drone` |
 
 **Branches:** 
-`main` Only merge when something is demo-ready
+`main` Only merge when something is demo-ready /!   
 `develop` Integration branch, merge and test features here
 `user-app` Customer app UI
 `dashboard` Operator dashboard UI

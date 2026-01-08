@@ -144,26 +144,6 @@ Drone → MQTT Broker → WebSocket Server → Operator Dashboard
 | Frontend (User App) | Login, delivery request UI, tracking |
 | Frontend (Dashboard) | Operator controls, live video, drone status |
 
-## Features
-
-### Must Have
-- [x] Project structure & dependencies
-- [ ] User authentication
-- [ ] Delivery request system
-- [ ] Operator dashboard with flight controls
-- [ ] Live drone telemetry
-- [ ] MQTT communication
-
-### Should Have
-- [ ] Storage compartment lock/unlock
-- [ ] Push notifications
-- [ ] Battery level display
-
-### Could Have
-- [ ] Autonomous GPS navigation
-- [ ] Return-to-home on signal loss
-- [ ] Delivery history
-
 ## Security
 
 - Environment variables for sensitive data

@@ -7,6 +7,17 @@ A platform for autonomous delivery drones operated remotely by humans. Move anyt
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E)
 ![MQTT](https://img.shields.io/badge/MQTT-HiveMQ-orange)
 
+## Quick Links
+
+| Component | README | Branch |
+|-----------|--------|--------|
+| User App | [apps/user-app/README.md](./apps/user-app/README.md) | `user-app` |
+| Operator Dashboard | [apps/operator-dashboard/README.md](./apps/operator-dashboard/README.md) | `dashboard` |
+| Shared Package | [packages/shared/README.md](./packages/shared/README.md) | `backend` |
+| Drone Firmware | [firmware/README.md](./firmware/README.md) | `drone` |
+
+**Branches:** `main` → `develop` → `user-app` / `dashboard` / `backend` / `drone`
+
 ## Project Vision
 
 Create an inclusive, efficient delivery service that enables remote work opportunities for everyone—including elderly individuals and people with physical limitations—using only an internet connection.

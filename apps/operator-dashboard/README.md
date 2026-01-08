@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Operator Dashboard
+
+Control panel for remote drone operators to monitor flights and intervene when needed.
+
+## Tech Stack
+- Next.js 14 (App Router)
+- Tailwind CSS
+- WebSocket (real-time updates)
+- MQTT (drone communication)
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+cd apps/operator-dashboard
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Runs on **http://localhost:3001**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features to Build
+- [ ] Operator authentication
+- [ ] Available deliveries list
+- [ ] Claim delivery button
+- [ ] Live video feed display
+- [ ] Drone telemetry (battery, GPS, altitude)
+- [ ] Manual flight controls (joystick/arrows)
+- [ ] Emergency stop button
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API Routes
 
-## Learn More
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/deliveries/available` | GET | List pending deliveries |
+| `/api/deliveries/[id]/claim` | POST | Claim a delivery |
+| `/api/drones/[id]/command` | POST | Send drone command |
+| `/api/drones/[id]/telemetry` | GET | Get latest telemetry |
 
-To learn more about Next.js, take a look at the following resources:
+## Folder Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/
+├── api/           # Backend routes
+├── page.tsx       # Dashboard home
+└── layout.tsx     # Root layout
+lib/
+├── mqtt-client.ts      # MQTT connection
+└── websocket-bridge.ts # WS bridge
+components/             # React components
+```

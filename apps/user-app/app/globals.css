@@ -1,3 +1,48 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+:root {
+    --primary: #0ea5e9;
+    --primary-dark: #0284c7;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.btn-primary {
+    @apply bg-sky-500 text-white font-medium py-3 px-6 rounded-lg;
+}
+
+.btn-primary:hover {
+    @apply bg-sky-600;
+}
+
+.btn-secondary {
+    @apply bg-white text-gray-700 font-medium py-3 px-6 rounded-lg border border-gray-200;
+}
+
+.btn-secondary:hover {
+    @apply bg-gray-50;
+}
+
+.input {
+    @apply w-full px-4 py-3 border border-gray-200 rounded-lg;
+}
+
+.input:focus {
+    @apply outline-none ring-2 ring-sky-500 border-transparent;
+}
+
+.card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
+}

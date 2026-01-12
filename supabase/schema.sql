@@ -26,6 +26,7 @@ CREATE TABLE deliveries (
   operator_id UUID REFERENCES users(id),
   drone_id UUID REFERENCES drones(id),
   status TEXT NOT NULL CHECK (status IN ('pending', 'assigned', 'in_transit', 'delivered', 'cancelled')) DEFAULT 'pending',
+  pin TEXT NOT NULL,  -- 6-digit unlock code for storage compartment
   pickup_lat DOUBLE PRECISION NOT NULL,
   pickup_lng DOUBLE PRECISION NOT NULL,
   pickup_address TEXT,

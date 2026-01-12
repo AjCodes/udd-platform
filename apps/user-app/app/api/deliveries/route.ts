@@ -25,12 +25,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Generate 6-digit PIN for compartment unlock
+        const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
         // Create delivery
         const { data, error } = await supabase
             .from('deliveries')
             .insert({
                 user_id: user.id,
                 status: 'pending',
+                pin,
                 pickup_lat: pickup_location.lat,
                 pickup_lng: pickup_location.lng,
                 pickup_address: pickup_location.address,

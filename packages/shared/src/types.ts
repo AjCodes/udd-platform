@@ -51,6 +51,7 @@ export interface Delivery {
     operator_id: string | null;
     drone_id: string | null;
     status: DeliveryStatus;
+    pin: string;  // 6-digit unlock code
     pickup_lat: number;
     pickup_lng: number;
     pickup_address?: string;

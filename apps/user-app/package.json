@@ -8,10 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
-    "@udd/shared": "workspace:*",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.0",
+    "@udd/shared": "workspace:*",
     "mqtt": "^5.14.1",
+    "next": "^14.2.35",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "ws": "^8.19.0"
   }
 }

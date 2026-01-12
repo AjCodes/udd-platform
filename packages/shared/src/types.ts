@@ -38,7 +38,8 @@ export interface Drone {
     name: string;
     status: DroneStatus;
     battery_level: number;
-    current_location: Location | null;
+    current_lat: number | null;
+    current_lng: number | null;
     created_at: string;
 }
 
@@ -50,8 +51,12 @@ export interface Delivery {
     operator_id: string | null;
     drone_id: string | null;
     status: DeliveryStatus;
-    pickup_location: Location;
-    dropoff_location: Location;
+    pickup_lat: number;
+    pickup_lng: number;
+    pickup_address?: string;
+    dropoff_lat: number;
+    dropoff_lng: number;
+    dropoff_address?: string;
     package_description?: string;
     created_at: string;
     updated_at: string;
@@ -67,7 +72,6 @@ export interface Telemetry {
     altitude: number;
     battery_level: number;
     speed: number;
-    heading: number;
     timestamp: string;
 }
 

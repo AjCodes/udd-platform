@@ -10,7 +10,7 @@ export interface MqttConfig {
     password: string;
 }
 
-// Get MQTT config from environment variables
+// Get MQTT config from env
 export function getMqttConfig(): MqttConfig {
     return {
         brokerUrl: process.env.MQTT_BROKER_URL || '',
@@ -32,7 +32,7 @@ export function connectMqtt(config?: MqttConfig): MqttClient {
         port: mqttConfig.port,
         username: mqttConfig.username,
         password: mqttConfig.password,
-        protocol: 'mqtts', // TLS
+        protocol: 'mqtts',
         rejectUnauthorized: true,
     };
 
@@ -40,26 +40,26 @@ export function connectMqtt(config?: MqttConfig): MqttClient {
     client = mqtt.connect(url, options);
 
     client.on('connect', () => {
-        console.log('✅ Connected to MQTT broker');
+        console.log('[MQTT] Connected to broker');
     });
 
     client.on('error', (error) => {
-        console.error('❌ MQTT connection error:', error);
+        console.error('[MQTT] Connection error:', error);
     });
 
     client.on('disconnect', () => {
-        console.log('⚠️ Disconnected from MQTT broker');
+        console.log('[MQTT] Disconnected from broker');
     });
 
     return client;
 }
 
-// Get existing MQTT client
+// Get existing client
 export function getMqttClient(): MqttClient | null {
     return client;
 }
 
-// Disconnect from MQTT broker
+// Disconnect
 export function disconnectMqtt(): void {
     if (client) {
         client.end();
@@ -67,7 +67,7 @@ export function disconnectMqtt(): void {
     }
 }
 
-// Subscribe to drone telemetry
+// Subscribe to telemetry
 export function subscribeToTelemetry(
     droneId: string,
     callback: (data: TelemetryPayload) => void
@@ -77,10 +77,10 @@ export function subscribeToTelemetry(
 
     mqttClient.subscribe(topic, (err) => {
         if (err) {
-            console.error(`Failed to subscribe to ${topic}:`, err);
+            console.error('[MQTT] Subscribe failed:', topic, err);
             return;
         }
-        console.log(`📡 Subscribed to ${topic}`);
+        console.log('[MQTT] Subscribed to', topic);
     });
 
     mqttClient.on('message', (receivedTopic, message) => {
@@ -89,7 +89,7 @@ export function subscribeToTelemetry(
                 const data = JSON.parse(message.toString()) as TelemetryPayload;
                 callback(data);
             } catch (error) {
-                console.error('Failed to parse telemetry message:', error);
+                console.error('[MQTT] Failed to parse message:', error);
             }
         }
     });
@@ -108,14 +108,14 @@ export function sendDroneCommand(
 
     mqttClient.publish(topic, message, { qos: 1 }, (err) => {
         if (err) {
-            console.error(`Failed to send command to ${topic}:`, err);
+            console.error('[MQTT] Publish failed:', topic, err);
             return;
         }
-        console.log(`🚀 Sent command '${command}' to ${topic}`);
+        console.log('[MQTT] Sent command:', command);
     });
 }
 
-// Telemetry data structure from drone
+// Telemetry payload structure
 export interface TelemetryPayload {
     lat: number;
     lng: number;
@@ -125,5 +125,4 @@ export interface TelemetryPayload {
     ts: number;
 }
 
-// Export topics helper
 export { MQTT_TOPICS };

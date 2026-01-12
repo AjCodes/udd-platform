@@ -32,6 +32,6 @@ export async function GET(request: Request) {
         }
     }
 
-    // Redirect to dashboard
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Redirect to dashboard with success message
+    return NextResponse.redirect(new URL('/dashboard?login=success', request.url));
 }

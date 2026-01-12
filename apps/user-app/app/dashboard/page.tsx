@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@shared/supabase';
 import type { Delivery } from '@shared/types';
@@ -10,9 +10,12 @@ import DeliveryCard from '@/components/DeliveryCard';
 
 export default function DashboardPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [user, setUser] = useState<{ email: string; full_name?: string } | null>(null);
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
 
     useEffect(() => {
         const loadData = async () => {
@@ -25,14 +28,28 @@ export default function DashboardPage() {
                 return;
             }
 
-            // Get user profile
+            // Check for login success message
+            const loginSuccess = searchParams.get('login');
+            if (loginSuccess === 'success') {
+                setToastMessage('Successfully logged in!');
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
+            }
+
+            // Get user profile from db
             const { data: profile } = await supabase
                 .from('users')
                 .select('email, full_name')
                 .eq('id', authUser.id)
                 .single();
 
-            setUser(profile || { email: authUser.email || '' });
+            // Fallback to name from auth metadata (Google/Signup)
+            const authName = authUser.user_metadata?.full_name || authUser.user_metadata?.name;
+
+            setUser({
+                email: profile?.email || authUser.email || '',
+                full_name: profile?.full_name || authName
+            });
 
             // Get active deliveries
             const { data: deliveriesData } = await supabase
@@ -47,7 +64,7 @@ export default function DashboardPage() {
         };
 
         loadData();
-    }, [router]);
+    }, [router, searchParams]);
 
     if (loading) {
         return (
@@ -59,6 +76,16 @@ export default function DashboardPage() {
 
     return (
         <div className="min-h-screen pb-20">
+            {/* Toast notification */}
+            {showToast && (
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {toastMessage}
+                </div>
+            )}
+
             {/* Header */}
             <div className="bg-gradient-to-br from-sky-500 to-sky-600 text-white px-4 pt-12 pb-8 rounded-b-3xl">
                 <h1 className="text-2xl font-bold">

@@ -51,8 +51,10 @@ export async function POST(
             return NextResponse.json({ error: 'Drone not found' }, { status: 404 });
         }
 
-        // TODO: Send command to drone via MQTT
-        // This is where we would publish to: drone/{droneId}/command
+        // Send command to drone via MQTT
+        const { sendDroneCommand } = await import('@shared/mqtt');
+        sendDroneCommand(params.id, command, payload);
+
         console.log(`Sending command '${command}' to drone ${params.id}`, payload);
 
         // Update drone status based on command

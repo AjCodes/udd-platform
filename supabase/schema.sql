@@ -45,6 +45,7 @@ CREATE TABLE telemetry (
   latitude DOUBLE PRECISION NOT NULL,
   longitude DOUBLE PRECISION NOT NULL,
   altitude DOUBLE PRECISION,
+  heading DOUBLE PRECISION,  -- Compass direction 0-360 degrees (0=North, 90=East, etc.)
   battery_level INTEGER,
   speed DOUBLE PRECISION,
   timestamp TIMESTAMPTZ DEFAULT NOW()

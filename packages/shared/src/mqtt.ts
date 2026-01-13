@@ -120,6 +120,7 @@ export interface TelemetryPayload {
     lat: number;
     lng: number;
     alt: number;
+    heading: number;  // Compass direction 0-360 degrees
     battery: number;
     speed: number;
     ts: number;

@@ -71,6 +71,7 @@ export interface Telemetry {
     latitude: number;
     longitude: number;
     altitude: number;
+    heading: number;  // Compass direction 0-360 degrees (0=North, 90=East)
     battery_level: number;
     speed: number;
     timestamp: string;

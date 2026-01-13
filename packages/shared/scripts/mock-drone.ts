@@ -46,6 +46,7 @@ let droneState = {
     lat: 51.4416,
     lng: 5.4697,
     alt: 0,
+    heading: 0,
     battery: 100,
     speed: 0,
 };
@@ -57,6 +58,10 @@ function updatePosition() {
     if (droneState.alt < 50) {
         droneState.alt += Math.random() * 2;
     }
+
+    // Update heading (0-360 degrees, slowly rotating)
+    droneState.heading = (droneState.heading + (Math.random() - 0.3) * 10) % 360;
+    if (droneState.heading < 0) droneState.heading += 360;
 
     droneState.battery = Math.max(0, droneState.battery - 0.01);
     droneState.speed = Math.random() * 5 + 2;
@@ -81,6 +86,7 @@ client.on('connect', () => {
             lat: droneState.lat,
             lng: droneState.lng,
             alt: droneState.alt,
+            heading: Math.round(droneState.heading),
             battery: Math.round(droneState.battery),
             speed: parseFloat(droneState.speed.toFixed(2)),
             ts: Date.now(),
@@ -90,7 +96,7 @@ client.on('connect', () => {
 
         console.log(
             `Lat: ${telemetry.lat.toFixed(4)}, Lng: ${telemetry.lng.toFixed(4)} | ` +
-            `Battery: ${telemetry.battery}% | Alt: ${telemetry.alt.toFixed(1)}m | Speed: ${telemetry.speed}m/s`
+            `Heading: ${telemetry.heading}° | Battery: ${telemetry.battery}% | Alt: ${telemetry.alt.toFixed(1)}m | Speed: ${telemetry.speed}m/s`
         );
     }, 2000);
 });

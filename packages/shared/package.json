@@ -5,7 +5,8 @@
     "main": "./src/index.ts",
     "types": "./src/index.ts",
     "scripts": {
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "mock-drone": "ts-node scripts/mock-drone.ts"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.90.0",

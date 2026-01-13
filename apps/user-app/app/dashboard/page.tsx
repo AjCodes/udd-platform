@@ -88,9 +88,15 @@ export default function DashboardPage() {
 
             {/* Header */}
             <div className="bg-gradient-to-br from-sky-500 to-sky-600 text-white px-4 pt-12 pb-8 rounded-b-3xl">
-                <h1 className="text-2xl font-bold">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center overflow-hidden backdrop-blur-sm">
+                        <img src="/logo.png" alt="UDD" className="w-full h-full object-cover" />
+                    </div>
+                    <h1 className="text-xl font-bold">UDD</h1>
+                </div>
+                <h2 className="text-2xl font-bold">
                     Welcome, {user?.full_name?.split(' ')[0] || 'User'}!
-                </h1>
+                </h2>
                 <p className="text-sky-100 mt-1">Request drone delivery anywhere</p>
             </div>
 

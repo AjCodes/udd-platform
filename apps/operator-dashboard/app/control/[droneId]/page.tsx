@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Drone, Delivery } from '@udd/shared';
+import MapComponent from '@/components/MapComponent';
 
 interface TelemetryData {
     latitude: number;
@@ -151,14 +152,12 @@ export default function DroneControlPage() {
                             </svg>
                         </Link>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
+                            <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center overflow-hidden">
+                                <img src="/logo.png" alt="UDD" className="w-full h-full object-cover" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold">{drone.name}</h1>
-                                <p className="text-sm text-gray-400">Drone Control</p>
+                                <h1 className="text-xl font-bold">UDD</h1>
+                                <p className="text-sm text-gray-400">Operator Dashboard</p>
                             </div>
                         </div>
                     </div>
@@ -178,20 +177,21 @@ export default function DroneControlPage() {
                             <h2 className="text-lg font-semibold">Live Map</h2>
                         </div>
                         <div className="h-96 bg-gray-700 flex items-center justify-center relative">
-                            {/* Map placeholder - will be replaced with Google Maps */}
-                            <div className="text-center text-gray-400">
-                                <svg className="w-16 h-16 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                                </svg>
-                                <p className="text-lg font-medium">Map View</p>
-                                <p className="text-sm">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable</p>
-                                <div className="mt-4 text-left bg-gray-800 rounded-lg p-4 max-w-xs mx-auto">
-                                    <p className="text-xs text-gray-500 mb-2">Current Position:</p>
-                                    <p className="text-sm text-white font-mono">
-                                        {telemetry?.latitude.toFixed(6)}, {telemetry?.longitude.toFixed(6)}
-                                    </p>
+                            {telemetry && (
+                                <MapComponent
+                                    center={{
+                                        lat: telemetry.latitude,
+                                        lng: telemetry.longitude
+                                    }}
+                                    zoom={15}
+                                />
+                            )}
+                            {!telemetry && (
+                                <div className="text-center text-gray-400">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+                                    <p className="text-lg font-medium">Waiting for Telemetry...</p>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Compass indicator */}
                             <div className="absolute top-4 right-4 w-16 h-16 bg-gray-800 rounded-full border border-gray-600 flex items-center justify-center">

@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'UDD - Drone Delivery',
-  description: 'Request drone deliveries and track your packages',
+  title: 'UDD - Universal Delivery Drone',
+  description: 'Your package, delivered by air.',
 };
 
 export default function RootLayout({

@@ -81,14 +81,12 @@ export default function DashboardPage() {
             <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
+                        <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center overflow-hidden">
+                            <img src="/logo.png" alt="UDD" className="w-full h-full object-cover" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold">UDD Operator Dashboard</h1>
-                            <p className="text-sm text-gray-400">Drone Control Center</p>
+                            <h1 className="text-xl font-bold">UDD</h1>
+                            <p className="text-sm text-gray-400">Operator Dashboard</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">

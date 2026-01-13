@@ -9,22 +9,23 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@udd/shared": "workspace:*",
+    "@react-google-maps/api": "^2.20.8",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.0",
+    "@udd/shared": "workspace:*",
     "mqtt": "^5.14.1",
-    "next": "16.1.1",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "next": "14.2.23",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "ws": "^8.19.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.23",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

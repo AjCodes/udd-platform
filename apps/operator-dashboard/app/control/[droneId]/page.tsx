@@ -153,7 +153,9 @@ export default function DroneControlPage() {
                         </Link>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center overflow-hidden">
-                                <img src="/logo.png" alt="UDD" className="w-full h-full object-cover" />
+                                <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center p-2 border border-white/20 shadow-lg">
+                                    <img src="/drone_icon_transparent.png" alt="UDD" className="w-full h-full object-contain" />
+                                </div>
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold">UDD</h1>

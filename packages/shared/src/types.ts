@@ -59,6 +59,10 @@ export interface Delivery {
     dropoff_lng: number;
     dropoff_address?: string;
     package_description?: string;
+    sender_name: string;
+    sender_phone: string;
+    receiver_name: string;
+    receiver_phone: string;
     created_at: string;
     updated_at: string;
 }

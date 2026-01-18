@@ -1,4 +1,4 @@
-import type { Delivery } from '@shared/types';
+import type { Delivery } from '@udd/shared';
 import Link from 'next/link';
 
 interface DeliveryCardProps {

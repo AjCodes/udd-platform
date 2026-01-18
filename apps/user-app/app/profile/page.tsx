@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@shared/supabase';
+import { createBrowserClient } from '@udd/shared';
 import BottomNav from '@/components/BottomNav';
 
 interface UserProfile {
@@ -56,7 +56,7 @@ export default function ProfilePage() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: 'var(--primary)' }}></div>
             </div>
         );
     }
@@ -75,8 +75,8 @@ export default function ProfilePage() {
                 {/* User info */}
                 <div className="card">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center">
-                            <span className="text-2xl font-bold text-sky-500">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--primary-light)' }}>
+                            <span className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
                                 {initial}
                             </span>
                         </div>

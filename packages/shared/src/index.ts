@@ -2,7 +2,7 @@
 export * from './types';
 
 // Supabase client
-export { createBrowserClient, createServerClient } from './supabase';
+export { createBrowserClient, createServerClient, testSupabaseConnection } from './supabase';
 
 // MQTT client
 export * from './mqtt';

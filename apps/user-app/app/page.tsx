@@ -1,6 +1,13 @@
 import { redirect } from 'next/navigation';
+import { createServerClient } from '@udd/shared';
 
-export default function Home() {
-  // Redirect to login page
-  redirect('/login');
+export default async function Home() {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect('/home');
+  } else {
+    redirect('/login');
+  }
 }

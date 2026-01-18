@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@shared/supabase';
-import type { Delivery, Drone } from '@shared/types';
+import { createBrowserClient } from '@udd/shared';
+import type { Delivery, Drone } from '@udd/shared';
 import Link from 'next/link';
 
 interface MissionWithDrone extends Delivery {
@@ -36,8 +36,10 @@ export default function ActiveMissions() {
 
         const subscription = supabase
             .channel('mission-updates')
-            .on('postgres_changes', { event: '*', table: 'deliveries' }, fetchMissions)
-            .on('postgres_changes', { event: '*', table: 'drones' }, fetchMissions)
+            // @ts-ignore
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, fetchMissions)
+            // @ts-ignore
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, fetchMissions)
             .subscribe();
 
         return () => {

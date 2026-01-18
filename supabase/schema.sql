@@ -99,7 +99,8 @@ CREATE POLICY "Operators can view telemetry" ON telemetry
 -- Enable realtime for live updates
 ALTER PUBLICATION supabase_realtime ADD TABLE deliveries;
 ALTER PUBLICATION supabase_realtime ADD TABLE telemetry;
+ALTER PUBLICATION supabase_realtime ADD TABLE drones;
 
 -- Insert test drone
 INSERT INTO drones (name, status, battery_level, current_lat, current_lng)
-VALUES ('Drone-Alpha', 'idle', 100, 51.4416, 5.4697);
+VALUES ('Drone-001', 'idle', 100, 51.4416, 5.4697);

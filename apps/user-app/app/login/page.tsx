@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@shared/supabase';
+import Image from 'next/image';
+import { createBrowserClient } from '@udd/shared';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -32,7 +33,6 @@ export default function LoginPage() {
 
                 if (signUpError) throw signUpError;
 
-                // Create user profile
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     await supabase.from('users').insert({
@@ -51,7 +51,7 @@ export default function LoginPage() {
                 if (signInError) throw signInError;
             }
 
-            router.push('/dashboard?login=success');
+            router.push('/home?login=success');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong');
         } finally {
@@ -77,37 +77,52 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-            <div className="w-full max-w-md">
-                {/* Logo */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-24 h-24 mb-4 bg-white rounded-2xl overflow-hidden shadow-sm">
-                        <img
-                            src="/logo.png"
-                            alt="UDD Logo"
-                            className="w-full h-full object-contain"
-                        />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">Universal Delivery Drone</h1>
-                    <p className="text-gray-500 mt-1">Drone delivery made easy</p>
+        <div className="min-h-screen relative flex items-center justify-center p-4">
+            {/* Professional Gradient Background */}
+            <div
+                className="absolute inset-0 -z-10"
+                style={{
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                }}
+            />
+
+            {/* Corner Logo Branding */}
+            <div className="absolute top-8 left-8 flex flex-col items-center gap-2">
+                <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center p-3 border border-white/20 shadow-xl overflow-hidden">
+                    <Image
+                        src="/drone_icon_high_res.png"
+                        alt="UDD Logo"
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-contain"
+                        priority
+                    />
                 </div>
+                <span className="text-white font-black tracking-[0.2em] text-sm drop-shadow-md">UDD</span>
+            </div>
 
-                {/* Form */}
-                <div className="card">
-                    <h2 className="text-xl font-semibold mb-6">
-                        {isSignUp ? 'Create Account' : 'Sign In'}
-                    </h2>
+            <div className="w-full max-w-md">
+                {/* Main Login Card */}
+                <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10">
+                    <div className="mb-8 text-center md:text-left">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            {isSignUp ? 'Create your account' : 'Sign in to your account'}
+                        </h1>
+                        <p className="text-gray-500">
+                            {isSignUp ? 'Start using drone delivery today' : 'Welcome back to Universal Delivery Drone'}
+                        </p>
+                    </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {isSignUp && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">
                                     Full Name
                                 </label>
                                 <input
                                     type="text"
-                                    className="input"
-                                    placeholder="John Doe"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all"
+                                    placeholder="Enter your full name"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     required={isSignUp}
@@ -116,12 +131,12 @@ export default function LoginPage() {
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                Email Address
                             </label>
                             <input
                                 type="email"
-                                className="input"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all"
                                 placeholder="you@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -130,21 +145,29 @@ export default function LoginPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Password
-                            </label>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                    Password
+                                </label>
+                                {!isSignUp && (
+                                    <button type="button" className="text-sm font-medium text-cyan-600 hover:text-cyan-700 transition-colors">
+                                        Forgot password?
+                                    </button>
+                                )}
+                            </div>
                             <input
                                 type="password"
-                                className="input"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all"
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
+                                minLength={6}
                             />
                         </div>
 
                         {error && (
-                            <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                            <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium">
                                 {error}
                             </div>
                         )}
@@ -152,26 +175,24 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="btn-primary w-full disabled:opacity-50"
+                            className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
                         >
-                            {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+                            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
                         </button>
                     </form>
 
-                    <div className="relative my-6">
+                    <div className="relative my-8">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-200"></div>
+                            <div className="w-full border-t border-gray-100"></div>
                         </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-gray-500">or</span>
+                        <div className="relative flex justify-center text-xs font-bold text-gray-400">
+                            <span className="px-4 bg-white uppercase tracking-widest">Or continue with</span>
                         </div>
                     </div>
 
-                    {/* Google Button */}
                     <button
                         onClick={handleGoogleLogin}
-                        type="button"
-                        className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-all active:scale-[0.98]"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -179,18 +200,22 @@ export default function LoginPage() {
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                         </svg>
-                        Continue with Google
+                        Google
                     </button>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-8 text-center">
                         <button
                             onClick={() => setIsSignUp(!isSignUp)}
-                            className="text-sky-500 hover:text-sky-600 text-sm"
+                            className="text-gray-500 hover:text-cyan-600 text-sm font-semibold transition-colors"
                         >
-                            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+                            {isSignUp ? 'Already have an account? Sign In' : 'New to UDD? Create Account'}
                         </button>
                     </div>
                 </div>
+
+                <p className="mt-8 text-center text-white/50 text-xs font-semibold uppercase tracking-widest">
+                    &copy; 2026 Universal Delivery Drone
+                </p>
             </div>
         </div>
     );

@@ -1,48 +1,115 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
 
 :root {
-    --primary: #0ea5e9;
-    --primary-dark: #0284c7;
-    --bg: #f8fafc;
+    /* Accessible color palette - WCAG AAA compliant */
+    --primary: #006B6B;
+    /* Deep Teal - 7.2:1 contrast */
+    --primary-dark: #005555;
+    --primary-light: #E0F2F2;
+    --secondary: #4A5568;
+    /* Warm Slate */
+    --bg: #FAF9F7;
+    /* Warm White - reduces glare */
     --card: #ffffff;
     --text: #1e293b;
-    --text-muted: #64748b;
+    --text-muted: #4A5568;
     --border: #e2e8f0;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --error: #ef4444;
+    --success: #2F6B4F;
+    /* Forest Green */
+    --warning: #C05621;
+    /* Sunset Orange - colorblind friendly */
+    --error: #C05621;
 }
 
 body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: 18px;
+    /* WCAG AAA minimum for low vision */
+    line-height: 1.6;
 }
 
+/* Primary button - large touch target for elderly users */
 .btn-primary {
-    @apply bg-sky-500 text-white font-medium py-3 px-6 rounded-lg;
+    @apply text-white font-semibold rounded-xl;
+    background-color: var(--primary);
+    min-height: 56px;
+    /* 56px touch target for motor impairment */
+    padding: 16px 24px;
+    font-size: 18px;
+    transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-    @apply bg-sky-600;
+    background-color: var(--primary-dark);
+    transform: scale(1.02);
+}
+
+.btn-primary:focus {
+    outline: 3px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
+/* Giant CTA button for main actions */
+.btn-giant {
+    @apply text-white font-bold w-full flex items-center justify-center gap-3;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: 24px;
+    min-height: 80px;
+    padding: 20px 32px;
+    font-size: 22px;
+    box-shadow:
+        0 4px 6px rgba(0, 107, 107, 0.15),
+        0 10px 24px rgba(0, 107, 107, 0.25),
+        0 0 0 1px rgba(0, 107, 107, 0.1);
+    transition: all 0.2s ease;
+}
+
+.btn-giant:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 6px 12px rgba(0, 107, 107, 0.2),
+        0 16px 32px rgba(0, 107, 107, 0.35),
+        0 0 0 1px rgba(0, 107, 107, 0.15);
 }
 
 .btn-secondary {
-    @apply bg-white text-gray-700 font-medium py-3 px-6 rounded-lg border border-gray-200;
+    @apply font-medium rounded-xl border;
+    background-color: white;
+    color: var(--secondary);
+    border-color: var(--border);
+    min-height: 56px;
+    padding: 16px 24px;
+    font-size: 18px;
 }
 
 .btn-secondary:hover {
     @apply bg-gray-50;
 }
 
+/* Form inputs - larger for accessibility */
 .input {
-    @apply w-full px-4 py-3 border border-gray-200 rounded-lg;
+    @apply w-full border rounded-xl;
+    border-color: var(--border);
+    padding: 16px 20px;
+    font-size: 18px;
+    min-height: 56px;
 }
 
 .input:focus {
-    @apply outline-none ring-2 ring-sky-500 border-transparent;
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
+/* Card component */
 .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
+    @apply bg-white rounded-2xl shadow-sm border p-5;
+    border-color: var(--border);
+}
+
+.card:hover {
+    @apply shadow-md;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import type { Telemetry, DroneStatus } from '@shared/types';
+import type { Telemetry, DroneStatus } from '@udd/shared';
 
 interface DroneTelemetryProps {
     status: DroneStatus;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@shared/supabase';
-import type { DroneCommandRequest } from '@shared/types';
+import { createServerClient } from '@udd/shared';
+import type { DroneCommandRequest } from '@udd/shared';
 
 // POST /api/drones/[id]/command - Send command to drone
 export async function POST(
@@ -52,7 +52,7 @@ export async function POST(
         }
 
         // Send command to drone via MQTT
-        const { sendDroneCommand } = await import('@shared/mqtt');
+        const { sendDroneCommand } = await import('@udd/shared');
         sendDroneCommand(params.id, command, payload);
 
         console.log(`Sending command '${command}' to drone ${params.id}`, payload);

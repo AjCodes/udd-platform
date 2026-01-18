@@ -32,13 +32,27 @@ export function createServerClient(): SupabaseClient {
     }
 
     console.log('[Supabase] Server connecting to', supabaseUrl);
+    console.log('[Supabase] Service role key length:', supabaseServiceKey?.length || 0);
 
-    return createClient(supabaseUrl, supabaseServiceKey, {
+    // Create client with service role key - this should bypass RLS automatically
+    const client = createClient(supabaseUrl, supabaseServiceKey, {
         auth: {
             autoRefreshToken: false,
             persistSession: false,
+            // Ensure we're using service role which bypasses RLS
+        },
+        db: {
+            schema: 'public',
         },
     });
+
+    // Verify the client is using service role by checking if it bypasses RLS
+    // Service role key should start with 'eyJ' (JWT token)
+    if (!supabaseServiceKey.startsWith('eyJ')) {
+        console.warn('[Supabase] ⚠️ Service role key format looks incorrect!');
+    }
+
+    return client;
 }
 
 // Test connection

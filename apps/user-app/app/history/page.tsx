@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@shared/supabase';
-import type { Delivery } from '@shared/types';
+import { createBrowserClient } from '@udd/shared';
+import type { Delivery } from '@udd/shared';
 import BottomNav from '@/components/BottomNav';
-import DeliveryCard from '@/components/DeliveryCard';
 
 export default function HistoryPage() {
     const router = useRouter();
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
 
     useEffect(() => {
         const loadHistory = async () => {
@@ -26,7 +26,6 @@ export default function HistoryPage() {
                 .from('deliveries')
                 .select('*')
                 .eq('user_id', user.id)
-                .in('status', ['delivered', 'cancelled'])
                 .order('created_at', { ascending: false });
 
             setDeliveries(data || []);
@@ -36,57 +35,143 @@ export default function HistoryPage() {
         loadHistory();
     }, [router]);
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'pending': return { bg: 'bg-yellow-100', text: 'text-yellow-700' };
+            case 'assigned': return { bg: 'bg-blue-100', text: 'text-blue-700' };
+            case 'in_transit': return { bg: 'bg-purple-100', text: 'text-purple-700' };
+            case 'delivered': return { bg: 'bg-green-100', text: 'text-green-700' };
+            case 'cancelled': return { bg: 'bg-gray-100', text: 'text-gray-500' };
+            default: return { bg: 'bg-gray-100', text: 'text-gray-500' };
+        }
+    };
+
+    const _getStatusEmoji = (status: string) => {
+        switch (status) {
+            case 'pending': return '⏳';
+            case 'assigned': return '🚁';
+            case 'in_transit': return '✈️';
+            case 'delivered': return '✅';
+            case 'cancelled': return '❌';
+            default: return '📦';
+        }
+    };
+
+    const filteredDeliveries = deliveries.filter(d => {
+        if (filter === 'all') return true;
+        if (filter === 'active') return ['pending', 'assigned', 'in_transit'].includes(d.status);
+        if (filter === 'completed') return ['delivered', 'cancelled'].includes(d.status);
+        return true;
+    });
+
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+            <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)' }}>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: 'var(--primary)' }}></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen pb-20">
+        <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg)' }}>
             {/* Header */}
-            <div className="bg-white border-b px-4 py-4">
-                <h1 className="text-xl font-semibold">Delivery History</h1>
+            <div className="bg-white border-b px-5 py-5">
+                <h1 className="text-xl font-semibold mb-4">My Deliveries</h1>
+
+                {/* Filter tabs */}
+                <div className="flex gap-2">
+                    {(['all', 'active', 'completed'] as const).map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === f
+                                ? 'text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            style={filter === f ? { backgroundColor: 'var(--primary)' } : {}}
+                        >
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                            {f === 'active' && deliveries.filter(d => ['pending', 'assigned', 'in_transit'].includes(d.status)).length > 0 && (
+                                <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-white text-teal-600">
+                                    {deliveries.filter(d => ['pending', 'assigned', 'in_transit'].includes(d.status)).length}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* History list */}
+            {/* Deliveries list */}
             <div className="p-4">
-                {deliveries.length === 0 ? (
+                {filteredDeliveries.length === 0 ? (
                     <div className="card text-center py-12">
-                        <div className="text-gray-400 mb-2">
-                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                        <div className="text-5xl mb-4">
+                            {filter === 'active' ? '🚁' : filter === 'completed' ? '📦' : '📭'}
                         </div>
-                        <p className="text-gray-500">No delivery history yet</p>
+                        <p className="text-gray-500 text-lg">
+                            {filter === 'active'
+                                ? 'No active deliveries'
+                                : filter === 'completed'
+                                    ? 'No completed deliveries yet'
+                                    : 'No deliveries yet'}
+                        </p>
+                        <button
+                            onClick={() => router.push('/new-delivery')}
+                            className="btn-primary mt-4"
+                        >
+                            Request a Delivery
+                        </button>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {deliveries.map((delivery) => (
-                            <div key={delivery.id} className="card">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <p className="text-sm text-gray-500">
+                        {filteredDeliveries.map((delivery) => {
+                            const statusStyle = getStatusColor(delivery.status);
+                            const isActive = ['pending', 'assigned', 'in_transit'].includes(delivery.status);
+
+                            return (
+                                <button
+                                    key={delivery.id}
+                                    onClick={() => router.push(`/delivery/${delivery.id}`)}
+                                    className="card w-full text-left hover:shadow-md transition-shadow"
+                                    style={isActive ? { borderLeft: '4px solid var(--primary)' } : {}}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div>
+                                                <p className="font-semibold text-gray-900">
+                                                    {delivery.pickup_address?.split(',')[0] || 'Pickup'}
+                                                </p>
+                                                <p className="text-sm text-gray-500">
+                                                    → {delivery.dropoff_address?.split(',')[0] || 'Dropoff'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
+                                            {delivery.status.replace('_', ' ').toUpperCase()}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center text-sm text-gray-500">
+                                        <span>
                                             {new Date(delivery.created_at).toLocaleDateString('en-US', {
                                                 month: 'short',
                                                 day: 'numeric',
-                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
                                             })}
-                                        </p>
-                                        <p className="font-medium">{delivery.pickup_address || 'Pickup'}</p>
-                                        <p className="text-gray-500 text-sm">→ {delivery.dropoff_address || 'Dropoff'}</p>
+                                        </span>
+                                        {isActive && (
+                                            <span className="flex items-center gap-1 font-medium" style={{ color: 'var(--primary)' }}>
+                                                Track
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </span>
+                                        )}
                                     </div>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.status === 'delivered'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-gray-100 text-gray-500'
-                                        }`}>
-                                        {delivery.status === 'delivered' ? 'Delivered' : 'Cancelled'}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>

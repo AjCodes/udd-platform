@@ -1,11 +1,10 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function DeliveryConfirmedPage() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const pin = searchParams.get('pin') || '------';
 
     const handleShare = async () => {
@@ -17,7 +16,7 @@ export default function DeliveryConfirmedPage() {
         if (navigator.share) {
             try {
                 await navigator.share(shareData);
-            } catch (err) {
+            } catch {
                 // User cancelled or error
             }
         } else {
@@ -30,8 +29,8 @@ export default function DeliveryConfirmedPage() {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4">
             {/* Success icon */}
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--primary-light)' }}>
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--primary)' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
             </div>
@@ -42,9 +41,9 @@ export default function DeliveryConfirmedPage() {
             </p>
 
             {/* PIN display */}
-            <div className="bg-sky-50 border-2 border-sky-200 rounded-2xl p-6 text-center mb-6 w-full max-w-sm">
-                <p className="text-sm text-sky-600 font-medium mb-2">UNLOCK PIN</p>
-                <p className="text-4xl font-bold text-sky-700 tracking-widest font-mono">{pin}</p>
+            <div className="rounded-2xl p-6 text-center mb-6 w-full max-w-sm border-2" style={{ backgroundColor: 'var(--primary-light)', borderColor: 'var(--primary)' }}>
+                <p className="text-sm font-medium mb-2" style={{ color: 'var(--primary)' }}>UNLOCK PIN</p>
+                <p className="text-4xl font-bold tracking-widest font-mono" style={{ color: 'var(--primary-dark)' }}>{pin}</p>
             </div>
 
             <p className="text-sm text-gray-500 text-center mb-6 max-w-sm">
@@ -62,7 +61,7 @@ export default function DeliveryConfirmedPage() {
                 Share PIN
             </button>
 
-            <Link href="/dashboard" className="text-sky-500 hover:text-sky-600">
+            <Link href="/dashboard" className="font-medium hover:underline" style={{ color: 'var(--primary)' }}>
                 Back to Dashboard
             </Link>
         </div>

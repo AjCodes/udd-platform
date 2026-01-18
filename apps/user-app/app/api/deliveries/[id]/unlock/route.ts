@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@shared/supabase';
+import { createServerClient } from '@udd/shared';
 
 // POST /api/deliveries/[id]/unlock - Unlock storage compartment
 export async function POST(
@@ -63,7 +63,7 @@ export async function POST(
             message: 'Storage compartment unlocked',
             delivery: data
         });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

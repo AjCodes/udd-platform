@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@shared/supabase';
+import { createServerClient } from '@udd/shared';
 
 // GET /api/deliveries/[id] - Get single delivery details
 export async function GET(
@@ -28,7 +28,7 @@ export async function GET(
         }
 
         return NextResponse.json(data);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@shared/supabase';
-import type { Drone } from '@shared/types';
+import { createBrowserClient } from '@udd/shared';
+import type { Drone } from '@udd/shared';
 
 export default function DroneStatusGrid() {
     const [drones, setDrones] = useState<Drone[]>([]);
@@ -25,7 +25,8 @@ export default function DroneStatusGrid() {
 
         const subscription = supabase
             .channel('drone-grid-updates')
-            .on('postgres_changes', { event: '*', table: 'drones' }, fetchDrones)
+            // @ts-ignore
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, fetchDrones)
             .subscribe();
 
         return () => {

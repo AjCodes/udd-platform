@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@shared/supabase';
+import { createServerClient } from '@udd/shared';
 
 // Handle OAuth callback
 export async function GET(request: Request) {
@@ -32,6 +32,6 @@ export async function GET(request: Request) {
         }
     }
 
-    // Redirect to dashboard with success message
-    return NextResponse.redirect(new URL('/dashboard?login=success', request.url));
+    // Redirect to home with success message
+    return NextResponse.redirect(new URL('/home?login=success', request.url));
 }

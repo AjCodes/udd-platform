@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@shared/supabase';
+import { createServerClient } from '@udd/shared';
 
 // POST /api/deliveries/[id]/cancel - Cancel a delivery
 export async function POST(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
@@ -48,7 +48,7 @@ export async function POST(
         }
 
         return NextResponse.json(data);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

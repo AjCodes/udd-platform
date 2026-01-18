@@ -1,21 +1,34 @@
 import { NextResponse } from 'next/server';
-import { testSupabaseConnection } from '@shared/supabase';
-import { getMqttConfig } from '@shared/mqtt';
+import { testSupabaseConnection } from '@udd/shared';
+import { getMqttConfig } from '@udd/shared';
 
-// Health check endpoint
+// Health check endpoint (optimized to avoid high latency)
 export async function GET() {
+    const startTime = Date.now();
     const health: Record<string, unknown> = {
         status: 'ok',
         timestamp: new Date().toISOString(),
         checks: {},
     };
 
-    // Check Supabase
+    // Quick env check first (no async operations)
+    health.env = {
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'set' : 'missing',
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'missing',
+        MQTT_BROKER_URL: process.env.MQTT_BROKER_URL ? 'set' : 'missing',
+        MQTT_USERNAME: process.env.MQTT_USERNAME ? 'set' : 'missing',
+        MQTT_PASSWORD: process.env.MQTT_PASSWORD ? 'set' : 'missing',
+    };
+
+    // Check Supabase with timeout
     try {
-        const supabaseOk = await testSupabaseConnection();
+        const supabaseOk = await Promise.race([
+            testSupabaseConnection(),
+            new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000))
+        ]);
         health.checks = {
             ...health.checks as object,
-            supabase: supabaseOk ? 'connected' : 'failed',
+            supabase: supabaseOk ? 'connected' : 'timeout/failed',
         };
         if (!supabaseOk) health.status = 'degraded';
     } catch (error) {
@@ -26,7 +39,7 @@ export async function GET() {
         health.status = 'degraded';
     }
 
-    // Check MQTT config
+    // Check MQTT config (synchronous)
     const mqttConfig = getMqttConfig();
     const mqttConfigured = !!(mqttConfig.brokerUrl && mqttConfig.username && mqttConfig.password);
     health.checks = {
@@ -35,16 +48,10 @@ export async function GET() {
     };
     if (!mqttConfigured) health.status = 'degraded';
 
-    // Env check
-    health.env = {
-        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'set' : 'missing',
-        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'missing',
-        MQTT_BROKER_URL: process.env.MQTT_BROKER_URL ? 'set' : 'missing',
-        MQTT_USERNAME: process.env.MQTT_USERNAME ? 'set' : 'missing',
-        MQTT_PASSWORD: process.env.MQTT_PASSWORD ? 'set' : 'missing',
-    };
-
-    console.log('[Health]', JSON.stringify(health, null, 2));
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+        console.warn(`[Health] Slow health check: ${duration}ms`);
+    }
 
     return NextResponse.json(health, {
         status: health.status === 'ok' ? 200 : 503,

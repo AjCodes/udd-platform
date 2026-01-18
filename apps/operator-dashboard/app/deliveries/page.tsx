@@ -12,27 +12,36 @@ export default function DeliveriesPage() {
 
     useEffect(() => {
         loadDeliveries();
-        const interval = setInterval(loadDeliveries, 5000);
+        // Poll every 2 seconds to ensure updates are seen quickly
+        const interval = setInterval(loadDeliveries, 2000);
         return () => clearInterval(interval);
     }, []);
 
     const loadDeliveries = async () => {
         try {
             // Fetch pending deliveries
-            const pendingRes = await fetch('/api/deliveries/available');
+            const pendingRes = await fetch('/api/deliveries/available', { cache: 'no-store' });
             if (pendingRes.ok) {
                 const data = await pendingRes.json();
-                setDeliveries(data);
+                console.log('[DeliveriesPage] Pending deliveries loaded:', data.length);
+                setDeliveries(data || []);
+            } else {
+                const errorData = await pendingRes.json().catch(() => ({}));
+                console.error('[DeliveriesPage] Failed to fetch pending deliveries:', pendingRes.status, errorData);
             }
 
             // Fetch my active deliveries
-            const activeRes = await fetch('/api/deliveries/my-active');
+            const activeRes = await fetch('/api/deliveries/my-active', { cache: 'no-store' });
             if (activeRes.ok) {
                 const data = await activeRes.json();
-                setMyDeliveries(data);
+                console.log('[DeliveriesPage] Active deliveries loaded:', data.length);
+                setMyDeliveries(data || []);
+            } else {
+                const errorData = await activeRes.json().catch(() => ({}));
+                console.error('[DeliveriesPage] Failed to fetch active deliveries:', activeRes.status, errorData);
             }
         } catch (error) {
-            console.error('Failed to load deliveries:', error);
+            console.error('[DeliveriesPage] Failed to load deliveries:', error);
         } finally {
             setLoading(false);
         }
@@ -40,34 +49,42 @@ export default function DeliveriesPage() {
 
     const claimDelivery = async (deliveryId: string) => {
         try {
+            console.log('[DeliveriesPage] Claiming delivery:', deliveryId);
             const res = await fetch(`/api/deliveries/${deliveryId}/claim`, {
                 method: 'POST',
             });
             if (res.ok) {
+                console.log('[DeliveriesPage] Delivery claimed successfully');
                 await loadDeliveries();
             } else {
-                const error = await res.json();
+                const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('[DeliveriesPage] Failed to claim delivery:', error);
                 alert(error.error || 'Failed to claim delivery');
             }
         } catch (error) {
+            console.error('[DeliveriesPage] Network error claiming delivery:', error);
             alert('Network error');
         }
     };
 
     const updateDeliveryStatus = async (deliveryId: string, status: string) => {
         try {
+            console.log('[DeliveriesPage] Updating delivery status:', deliveryId, 'to', status);
             const res = await fetch(`/api/deliveries/${deliveryId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
             });
             if (res.ok) {
+                console.log('[DeliveriesPage] Status updated successfully');
                 await loadDeliveries();
             } else {
-                const error = await res.json();
+                const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('[DeliveriesPage] Failed to update status:', error);
                 alert(error.error || 'Failed to update status');
             }
         } catch (error) {
+            console.error('[DeliveriesPage] Network error updating status:', error);
             alert('Network error');
         }
     };

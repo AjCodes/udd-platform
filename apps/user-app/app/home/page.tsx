@@ -1,0 +1,309 @@
+'use client';
+
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { createBrowserClient } from '@udd/shared';
+import type { Delivery } from '@udd/shared';
+import BottomNav from '@/components/BottomNav';
+import DeliveryCard from '@/components/DeliveryCard';
+
+export default function DashboardPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [user, setUser] = useState<{ email: string; full_name?: string } | null>(null);
+    const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const supabaseRef = useRef(createBrowserClient());
+    const userIdRef = useRef<string | null>(null);
+
+    // Get time-appropriate greeting
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good morning';
+        if (hour < 17) return 'Good afternoon';
+        return 'Good evening';
+    };
+
+    const loadData = useCallback(async () => {
+        try {
+            const supabase = supabaseRef.current;
+
+            // Check auth
+            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+            if (authError || !authUser) {
+                console.error('[Dashboard] Auth error:', authError);
+                router.push('/login');
+                return;
+            }
+
+            userIdRef.current = authUser.id;
+
+            // Check for login success message
+            const loginSuccess = searchParams.get('login');
+            if (loginSuccess === 'success') {
+                setToastMessage('Successfully logged in!');
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
+            }
+
+            // Get user profile from db
+            const { data: profile, error: profileError } = await supabase
+                .from('users')
+                .select('email, full_name')
+                .eq('id', authUser.id)
+                .single();
+
+            if (profileError) {
+                console.warn('[Dashboard] Profile fetch error:', profileError);
+            }
+
+            // Fallback to name from auth metadata (Google/Signup)
+            const authName = authUser.user_metadata?.full_name || authUser.user_metadata?.name;
+
+            setUser({
+                email: profile?.email || authUser.email || '',
+                full_name: profile?.full_name || authName
+            });
+
+            // Get active deliveries through API to ensure consistency with operator dashboard
+            // Use the same filtering logic as operator dashboard: ['pending', 'assigned', 'in_transit']
+            try {
+                const deliveriesRes = await fetch('/api/deliveries', { cache: 'no-store' });
+                if (deliveriesRes.ok) {
+                    const allDeliveries: Delivery[] = await deliveriesRes.json();
+
+                    // Filter to match operator dashboard EXACTLY: only active deliveries for this user
+                    // Exclude 'delivered' and 'cancelled' to match operator dashboard logic
+                    const activeDeliveries = allDeliveries
+                        .filter((d: Delivery) => {
+                            const isUserDelivery = d.user_id === authUser.id;
+                            const isActiveStatus = ['pending', 'assigned', 'in_transit'].includes(d.status);
+                            return isUserDelivery && isActiveStatus;
+                        })
+                        .sort((a: Delivery, b: Delivery) =>
+                            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                        );
+
+                    console.log('[Dashboard] Total deliveries from API:', allDeliveries.length);
+                    console.log('[Dashboard] User deliveries:', allDeliveries.filter(d => d.user_id === authUser.id).length);
+                    console.log('[Dashboard] Active deliveries (filtered):', activeDeliveries.length);
+                    console.log('[Dashboard] Delivery details:', activeDeliveries.map((d: Delivery) => ({
+                        id: d.id.slice(0, 8),
+                        status: d.status,
+                        created_at: d.created_at
+                    })));
+
+                    setDeliveries(activeDeliveries);
+                } else {
+                    const errorText = await deliveriesRes.text();
+                    console.error('[Dashboard] API fetch failed:', deliveriesRes.status, errorText);
+                    // Fallback to direct query if API fails
+                    const { data: deliveriesData, error: deliveriesError } = await supabase
+                        .from('deliveries')
+                        .select('*')
+                        .eq('user_id', authUser.id)
+                        .in('status', ['pending', 'assigned', 'in_transit'])
+                        .order('created_at', { ascending: false });
+
+                    if (deliveriesError) {
+                        console.error('[Dashboard] Fallback query error:', deliveriesError);
+                    } else {
+                        console.log('[Dashboard] Fallback loaded:', deliveriesData?.length || 0, 'deliveries');
+                        setDeliveries(deliveriesData || []);
+                    }
+                }
+            } catch (fetchError) {
+                console.error('[Dashboard] Fetch error:', fetchError);
+                // Fallback to direct query
+                const { data: deliveriesData, error: deliveriesError } = await supabase
+                    .from('deliveries')
+                    .select('*')
+                    .eq('user_id', authUser.id)
+                    .in('status', ['pending', 'assigned', 'in_transit'])
+                    .order('created_at', { ascending: false });
+
+                if (!deliveriesError) {
+                    setDeliveries(deliveriesData || []);
+                }
+            }
+
+            setLoading(false);
+        } catch (error) {
+            console.error('[Dashboard] Load data error:', error);
+            setLoading(false);
+        }
+    }, [router, searchParams]);
+
+    useEffect(() => {
+        let subscription: { unsubscribe: () => void } | null = null;
+        let interval: NodeJS.Timeout | null = null;
+
+        const setupSubscriptions = async () => {
+            // First load data to get userId
+            await loadData();
+
+            // Wait a bit for userIdRef to be set
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const supabase = supabaseRef.current;
+            const userId = userIdRef.current;
+
+            if (!userId) {
+                console.warn('[Dashboard] No userId available, skipping real-time subscription');
+                // Still set up polling
+                interval = setInterval(() => {
+                    loadData();
+                }, 3000);
+                return;
+            }
+
+            console.log('[Dashboard] Setting up real-time subscription for user:', userId);
+
+            // Subscribe to real-time updates for deliveries
+            subscription = supabase
+                .channel(`user-deliveries-${userId}`)
+                // @ts-expect-error - postgres_changes is valid but not in types
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'deliveries',
+                    filter: `user_id=eq.${userId}`
+                }, (payload: { eventType: string; new: { id: string } }) => {
+                    console.log('[Dashboard] Real-time update received:', payload.eventType, payload.new?.id);
+                    // Refetch deliveries when changes occur
+                    loadData();
+                })
+                .subscribe((status) => {
+                    console.log('[Dashboard] Subscription status:', status);
+                    if (status === 'SUBSCRIBED') {
+                        console.log('[Dashboard] Successfully subscribed to real-time updates');
+                    } else if (status === 'CHANNEL_ERROR') {
+                        console.error('[Dashboard] Subscription error, falling back to polling');
+                    }
+                });
+
+            // Poll every 3 seconds as backup (real-time might not work without proper RLS)
+            interval = setInterval(() => {
+                loadData();
+            }, 3000);
+        };
+
+        setupSubscriptions();
+
+        // Refresh when window gains focus
+        const handleFocus = () => {
+            console.log('[Dashboard] Window focused, refreshing data');
+            loadData();
+        };
+        window.addEventListener('focus', handleFocus);
+
+        // Listen for custom refresh event (from payment success)
+        const handleRefresh = () => {
+            console.log('[Dashboard] Custom refresh event received');
+            loadData();
+        };
+        window.addEventListener('delivery-created', handleRefresh);
+
+        return () => {
+            if (subscription) {
+                subscription.unsubscribe();
+            }
+            if (interval) {
+                clearInterval(interval);
+            }
+            window.removeEventListener('focus', handleFocus);
+            window.removeEventListener('delivery-created', handleRefresh);
+        };
+    }, [router, searchParams, loadData]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: 'var(--primary)' }}></div>
+            </div>
+        );
+    }
+
+    const firstName = user?.full_name?.split(' ')[0] || 'there';
+
+    return (
+        <div className="min-h-screen pb-24">
+            {/* Toast notification */}
+            {showToast && (
+                <div
+                    className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 text-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3"
+                    style={{ backgroundColor: 'var(--success)' }}
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="font-medium">{toastMessage}</span>
+                </div>
+            )}
+
+            {/* Header - Teal gradient */}
+            <div
+                className="text-white px-5 pt-14 pb-10 rounded-b-3xl"
+                style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)' }}
+            >
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden backdrop-blur-sm">
+                        <Image
+                            src="/drone_icon_high_res.png"
+                            alt="UDD"
+                            width={100}
+                            height={100}
+                            className="w-full h-full object-contain p-1"
+                        />
+                    </div>
+                    <h1 className="text-xl font-bold">Universal Delivery Drone</h1>
+                </div>
+                <h2 className="text-3xl font-bold">
+                    {getGreeting()}, {firstName}!
+                </h2>
+                <p className="text-white/80 mt-2 text-lg">How can we help you today?</p>
+            </div>
+
+            {/* Main content */}
+            <div className="px-5 -mt-6">
+                {/* Big Request Button */}
+                <Link href="/new-delivery" className="btn-giant mb-8">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
+                    </svg>
+                    <span>Request a Drone Delivery</span>
+                </Link>
+
+                {/* Active deliveries */}
+                <div>
+                    <h2 className="text-xl font-semibold mb-4">Your Deliveries</h2>
+                    {deliveries.length === 0 ? (
+                        <div className="card text-center py-10">
+                            <div className="text-gray-300 mb-3">
+                                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            <p className="text-gray-500 text-lg font-medium">No active deliveries</p>
+                            <p className="text-gray-400 mt-1">Tap the button above to get started</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {deliveries.map((delivery) => (
+                                <DeliveryCard key={delivery.id} delivery={delivery} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <BottomNav />
+        </div>
+    );
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Telemetry } from '@shared/types';
+import type { Telemetry } from '@udd/shared';
 
 interface DroneControlProps {
     droneId: string;

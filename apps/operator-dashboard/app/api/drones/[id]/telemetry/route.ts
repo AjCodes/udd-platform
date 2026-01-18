@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@shared/supabase';
+import { createServerClient } from '@udd/shared';
 
 // GET /api/drones/[id]/telemetry - Stream live telemetry data (SSE)
 export async function GET(

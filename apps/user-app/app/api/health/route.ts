@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { testSupabaseConnection } from '@shared/supabase';
+import { testSupabaseConnection } from '@udd/shared';
 
 // Health check endpoint
 export async function GET() {

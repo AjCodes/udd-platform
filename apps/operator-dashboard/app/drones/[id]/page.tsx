@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@shared/supabase';
-import type { Drone, Telemetry, Delivery } from '@shared/types';
+import { createBrowserClient } from '@udd/shared';
+import type { Drone, Telemetry, Delivery } from '@udd/shared';
 import DroneControl from '@/components/DroneControl';
 import DroneTelemetry from '@/components/DroneTelemetry';
 
@@ -49,11 +49,13 @@ export default function MissionControl({ params }: { params: { id: string } }) {
         // Subscribe to drone status updates
         const droneSub = supabase
             .channel(`drone-${params.id}`)
+            // @ts-ignore
             .on('postgres_changes', {
                 event: 'UPDATE',
+                schema: 'public',
                 table: 'drones',
                 filter: `id=eq.${params.id}`
-            }, (payload) => {
+            }, (payload: any) => {
                 setDrone(payload.new as Drone);
             })
             .subscribe();

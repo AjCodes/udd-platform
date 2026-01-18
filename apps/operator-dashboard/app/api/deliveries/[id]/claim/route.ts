@@ -1,30 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@shared/supabase';
+import { createServerClient } from '@udd/shared';
 
-// POST /api/deliveries/[id]/claim - Operator claims a delivery
+// POST /api/deliveries/[id]/claim - Claim a delivery and assign a drone
+// No auth required for dashboard demo
 export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         const supabase = createServerClient();
-
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // Check if user is an operator
-        const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || profile?.role !== 'operator') {
-            return NextResponse.json({ error: 'Forbidden - operators only' }, { status: 403 });
-        }
 
         // Check if delivery exists and is pending
         const { data: delivery, error: fetchError } = await supabase
@@ -41,10 +25,10 @@ export async function POST(
             );
         }
 
-        // Get an available drone
+        // Get an available idle drone
         const { data: drone, error: droneError } = await supabase
             .from('drones')
-            .select('id')
+            .select('id, name')
             .eq('status', 'idle')
             .limit(1)
             .single();
@@ -60,7 +44,6 @@ export async function POST(
         const { data, error } = await supabase
             .from('deliveries')
             .update({
-                operator_id: user.id,
                 drone_id: drone.id,
                 status: 'assigned',
                 updated_at: new Date().toISOString(),
@@ -74,13 +57,23 @@ export async function POST(
         }
 
         // Update drone status to flying
-        await supabase
+        const { error: droneUpdateError } = await supabase
             .from('drones')
             .update({ status: 'flying' })
             .eq('id', drone.id);
 
+        if (droneUpdateError) {
+            console.error('[Claim] Failed to update drone status:', droneUpdateError);
+            // Don't fail the request, but log the error
+        }
+
+        console.log('[Claim] ✅ Delivery', params.id.slice(0, 8), 'assigned to drone', drone.name);
+        console.log('[Claim] Delivery status:', data.status, 'Drone ID:', drone.id);
+
         return NextResponse.json(data);
     } catch (error) {
+        console.error('Failed to claim delivery:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

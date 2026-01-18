@@ -4,67 +4,115 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Delivery, Drone } from '@udd/shared';
 
+import { createBrowserClient } from '@udd/shared';
+import DeliveryQueue from '@/components/DeliveryQueue';
+
 export default function DashboardPage() {
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [drones, setDrones] = useState<Drone[]>([]);
     const [loading, setLoading] = useState(true);
-    const [claimingId, setClaimingId] = useState<string | null>(null);
+
+    const supabase = createBrowserClient();
 
     useEffect(() => {
         loadData();
-        // Poll for updates every 5 seconds
-        const interval = setInterval(loadData, 5000);
-        return () => clearInterval(interval);
+
+        // Subscribe to real-time updates for stats cards
+        const subscription = supabase
+            .channel('dashboard-stats-updates')
+            // @ts-ignore
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'drones'
+            }, (payload: any) => {
+                console.log('[Dashboard] Drone update:', payload.eventType);
+                loadData();
+            })
+            // @ts-ignore
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'deliveries'
+            }, (payload: any) => {
+                console.log('[Dashboard] Delivery update:', payload.eventType, payload.new?.id);
+                loadData();
+            })
+            .subscribe((status) => {
+                console.log('[Dashboard] Subscription status:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('[Dashboard] Successfully subscribed to real-time updates');
+                }
+            });
+
+        // Poll every 1 second as backup (real-time might not trigger without proper auth)
+        const interval = setInterval(() => {
+            loadData();
+        }, 1000);
+
+        // Refresh when window gains focus
+        const handleFocus = () => {
+            console.log('[Dashboard] Window focused, refreshing data');
+            loadData();
+        };
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            subscription.unsubscribe();
+            clearInterval(interval);
+            window.removeEventListener('focus', handleFocus);
+        };
     }, []);
 
     const loadData = async () => {
         try {
-            // Fetch pending deliveries
-            const deliveriesRes = await fetch('/api/deliveries/available');
+            // Fetch deliveries through API (bypasses RLS)
+            const deliveriesRes = await fetch('/api/deliveries', { cache: 'no-store' });
             if (deliveriesRes.ok) {
-                const data = await deliveriesRes.json();
-                setDeliveries(data);
+                const allDeliveries = await deliveriesRes.json();
+                // Filter to match DeliveryQueue: only active deliveries (exclude delivered and cancelled)
+                const activeDeliveries = allDeliveries.filter((d: Delivery) =>
+                    ['pending', 'assigned', 'in_transit'].includes(d.status)
+                );
+                console.log('[Dashboard] Active deliveries:', activeDeliveries.length, 'out of', allDeliveries.length);
+                setDeliveries(activeDeliveries);
+            } else {
+                console.error('[Dashboard] Failed to fetch deliveries:', deliveriesRes.status, deliveriesRes.statusText);
             }
 
-            // Fetch drones
-            const dronesRes = await fetch('/api/drones');
+            // Fetch drones for fleet status (already uses service role via API)
+            const dronesRes = await fetch('/api/drones', { cache: 'no-store' });
             if (dronesRes.ok) {
                 const data = await dronesRes.json();
+                console.log('[Dashboard] Loaded drones:', data.length);
+
+                const statusBreakdown = data.reduce((acc: Record<string, number>, d: Drone) => {
+                    acc[d.status] = (acc[d.status] || 0) + 1;
+                    return acc;
+                }, {});
+                console.log('[Dashboard] Drone status breakdown:', statusBreakdown);
+
+                const flyingCount = data.filter((d: Drone) => d.status === 'flying').length;
+                const idleCount = data.filter((d: Drone) => d.status === 'idle').length;
+                console.log('[Dashboard] Stats - Flying:', flyingCount, 'Idle:', idleCount, 'Total:', data.length);
+
                 setDrones(data);
+            } else {
+                console.error('[Dashboard] Failed to fetch drones:', dronesRes.status, dronesRes.statusText);
             }
         } catch (error) {
-            console.error('Failed to load data:', error);
+            console.error('[Dashboard] Failed to load data:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const claimDelivery = async (deliveryId: string) => {
-        setClaimingId(deliveryId);
-        try {
-            const res = await fetch(`/api/deliveries/${deliveryId}/claim`, {
-                method: 'POST',
-            });
-            if (res.ok) {
-                // Refresh data
-                await loadData();
-            } else {
-                const error = await res.json();
-                alert(error.error || 'Failed to claim delivery');
-            }
-        } catch (error) {
-            alert('Network error');
-        } finally {
-            setClaimingId(null);
-        }
-    };
-
     const statusColors: Record<string, string> = {
-        idle: 'bg-green-100 text-green-700',
-        flying: 'bg-blue-100 text-blue-700',
-        returning: 'bg-yellow-100 text-yellow-700',
-        charging: 'bg-orange-100 text-orange-700',
-        offline: 'bg-gray-100 text-gray-500',
+        idle: 'bg-green-500/20 text-green-500',
+        flying: 'bg-blue-500/20 text-blue-500',
+        returning: 'bg-yellow-500/20 text-yellow-500',
+        charging: 'bg-orange-500/20 text-orange-500',
+        offline: 'bg-gray-700 text-gray-400',
     };
 
     if (loading) {
@@ -81,8 +129,8 @@ export default function DashboardPage() {
             <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center overflow-hidden">
-                            <img src="/logo.png" alt="UDD" className="w-full h-full object-cover" />
+                        <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center p-2 border border-white/20 shadow-lg">
+                            <img src="/drone_icon_transparent.png" alt="UDD" className="w-full h-full object-contain" />
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">UDD</h1>
@@ -126,16 +174,16 @@ export default function DashboardPage() {
                 {/* Main Content */}
                 <main className="flex-1 p-6">
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                         <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-sm">Pending Deliveries</p>
+                                    <p className="text-gray-400 text-sm">Active Deliveries</p>
                                     <p className="text-3xl font-bold text-yellow-500">{deliveries.length}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
                                     <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                     </svg>
                                 </div>
                             </div>
@@ -166,71 +214,11 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-gray-400 text-sm">Total Drones</p>
-                                    <p className="text-3xl font-bold text-cyan-500">{drones.length}</p>
-                                </div>
-                                <div className="w-12 h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Pending Deliveries */}
-                        <div className="bg-gray-800 rounded-xl border border-gray-700">
-                            <div className="px-6 py-4 border-b border-gray-700">
-                                <h2 className="text-lg font-semibold flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                    </svg>
-                                    Pending Deliveries
-                                </h2>
-                            </div>
-                            <div className="p-4 max-h-96 overflow-y-auto">
-                                {deliveries.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
-                                        <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
-                                        <p>No pending deliveries</p>
-                                        <p className="text-sm text-gray-600">Waiting for new orders...</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {deliveries.map((delivery) => (
-                                            <div key={delivery.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <p className="text-sm text-gray-400">Order #{delivery.id.slice(0, 8)}</p>
-                                                        <p className="font-medium text-white">{delivery.pickup_address || 'Pickup location'}</p>
-                                                        <p className="text-gray-400 text-sm">→ {delivery.dropoff_address || 'Dropoff location'}</p>
-                                                    </div>
-                                                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">
-                                                        Pending
-                                                    </span>
-                                                </div>
-                                                {delivery.package_description && (
-                                                    <p className="text-sm text-gray-400 mb-3">{delivery.package_description}</p>
-                                                )}
-                                                <button
-                                                    onClick={() => claimDelivery(delivery.id)}
-                                                    disabled={claimingId === delivery.id}
-                                                    className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-                                                >
-                                                    {claimingId === delivery.id ? 'Claiming...' : 'Claim Delivery'}
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        {/* Live Delivery Feed */}
+                        <DeliveryQueue />
 
                         {/* Drone Status */}
                         <div className="bg-gray-800 rounded-xl border border-gray-700">
@@ -242,24 +230,22 @@ export default function DashboardPage() {
                                     Drone Fleet
                                 </h2>
                             </div>
-                            <div className="p-4 max-h-96 overflow-y-auto">
+                            <div className="p-4 max-h-[500px] overflow-y-auto">
                                 {drones.length === 0 ? (
                                     <div className="text-center py-8 text-gray-500">
                                         <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                         </svg>
                                         <p>No drones registered</p>
-                                        <p className="text-sm text-gray-600">Add drones in Supabase</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
                                         {drones.map((drone) => (
-                                            <Link
+                                            <div
                                                 key={drone.id}
-                                                href={`/control/${drone.id}`}
-                                                className="block bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-cyan-500 transition-colors"
+                                                className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 transition-colors"
                                             >
-                                                <div className="flex justify-between items-start mb-3">
+                                                <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
                                                             <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,31 +254,22 @@ export default function DashboardPage() {
                                                         </div>
                                                         <div>
                                                             <p className="font-medium text-white">{drone.name}</p>
-                                                            <p className="text-sm text-gray-400">ID: {drone.id.slice(0, 8)}</p>
+                                                            <p className="text-[10px] text-gray-500 font-mono tracking-tight uppercase">
+                                                                {drone.id.slice(0, 8)} | LAT: {drone.current_lat?.toFixed(4)} LNG: {drone.current_lng?.toFixed(4)}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[drone.status]}`}>
-                                                        {drone.status.charAt(0).toUpperCase() + drone.status.slice(1)}
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${statusColors[drone.status] || 'bg-gray-700 text-gray-400'}`}>
+                                                        {drone.status}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-4 text-sm">
-                                                    <div className="flex items-center gap-1">
-                                                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                        </svg>
-                                                        <span className="text-gray-300">{drone.battery_level}%</span>
-                                                    </div>
-                                                    {drone.current_lat && drone.current_lng && (
-                                                        <div className="flex items-center gap-1">
-                                                            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            </svg>
-                                                            <span className="text-gray-300">{drone.current_lat.toFixed(4)}, {drone.current_lng.toFixed(4)}</span>
-                                                        </div>
-                                                    )}
+                                                <div className="mt-3 w-full bg-gray-800 rounded-full h-1">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-500 ${drone.battery_level < 20 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                        style={{ width: `${drone.battery_level}%` }}
+                                                    ></div>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         ))}
                                     </div>
                                 )}

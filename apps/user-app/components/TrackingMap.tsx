@@ -128,4 +128,4 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ droneLocation, pickupLocation
     );
 };
 
-export default React.memo(TrackingMap);
+export default TrackingMap;

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { createBrowserClient } from '@udd/shared';
+import { createBrowserClient } from '@/lib/supabase';
 import type { Delivery } from '@udd/shared';
 import HoldToUnlock from '@/components/HoldToUnlock';
 import TrackingMap from '@/components/TrackingMap';

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@udd/shared';
+import { createBrowserClient } from '@/lib/supabase';
 
 interface AddressSuggestion {
     id: string;
@@ -226,7 +226,7 @@ export default function NewDeliveryPage() {
 
         try {
             // Get user email for Stripe
-            const supabase = (await import('@udd/shared')).createBrowserClient();
+            const supabase = createBrowserClient();
             const { data: { user } } = await supabase.auth.getUser();
             const userEmail = user?.email || '';
 

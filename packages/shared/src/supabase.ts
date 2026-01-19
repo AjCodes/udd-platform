@@ -1,7 +1,15 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Browser client (for frontend)
+// Singleton instance for browser client
+let browserClientInstance: SupabaseClient | null = null;
+
+// Browser client (for frontend) - uses singleton pattern to prevent multiple instances
 export function createBrowserClient(): SupabaseClient {
+    // Return existing instance if already created
+    if (browserClientInstance) {
+        return browserClientInstance;
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -12,8 +20,9 @@ export function createBrowserClient(): SupabaseClient {
         throw new Error('Missing Supabase environment variables');
     }
 
-    console.log('[Supabase] Connecting to', supabaseUrl);
-    return createClient(supabaseUrl, supabaseAnonKey);
+    console.log('[Supabase] Creating browser client for', supabaseUrl);
+    browserClientInstance = createClient(supabaseUrl, supabaseAnonKey);
+    return browserClientInstance;
 }
 
 // Server client (for API routes)

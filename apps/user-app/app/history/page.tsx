@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@udd/shared';
+import { createBrowserClient } from '@/lib/supabase';
 import type { Delivery } from '@udd/shared';
 import BottomNav from '@/components/BottomNav';
 

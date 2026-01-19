@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createBrowserClient } from '@udd/shared';
+import { createBrowserClient } from '@/lib/supabase';
 
 export default function PaymentSuccessPage() {
     const router = useRouter();
@@ -54,8 +54,8 @@ export default function PaymentSuccessPage() {
 
                 // Dispatch custom event to notify dashboard to refresh
                 if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('delivery-created', { 
-                        detail: { deliveryId: data.deliveryId } 
+                    window.dispatchEvent(new CustomEvent('delivery-created', {
+                        detail: { deliveryId: data.deliveryId }
                     }));
                     console.log('[PaymentSuccess] Dispatched delivery-created event');
                 }
@@ -69,12 +69,12 @@ export default function PaymentSuccessPage() {
                 console.error('[PaymentSuccess] Payment processing error:', error);
                 setStatus('error');
                 setMessage('Something went wrong. Please check your deliveries.');
-                
+
                 // Still try to refresh dashboard in case delivery was created
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('delivery-created'));
                 }
-                
+
                 setTimeout(() => router.push('/dashboard'), 3000);
             }
         };

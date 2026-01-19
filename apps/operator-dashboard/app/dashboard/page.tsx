@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center p-2 border border-white/20 shadow-lg">
-                            <img src="/drone_icon_transparent.png" alt="UDD" className="w-full h-full object-contain" />
+                            <img src="/udd-logo-icon.png" alt="UDD" className="w-full h-full object-contain" />
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">UDD</h1>

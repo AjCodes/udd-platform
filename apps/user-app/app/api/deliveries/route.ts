@@ -1,18 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@udd/shared';
 import type { CreateDeliveryRequest } from '@udd/shared';
+
+// Helper to get authenticated user from request Authorization header
+async function getAuthenticatedUser(request: NextRequest) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    // Get the access token from Authorization header
+    const authHeader = request.headers.get('Authorization');
+    const accessToken = authHeader?.replace('Bearer ', '');
+
+    if (!accessToken) {
+        console.error('[DeliveriesAPI] No access token in Authorization header');
+        return { user: null, supabase: null };
+    }
+
+    // Create a Supabase client and verify the token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        }
+    });
+
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) {
+        console.error('[DeliveriesAPI] Token verification failed:', error?.message);
+        return { user: null, supabase: null };
+    }
+
+    return { user, supabase };
+}
 
 // POST /api/deliveries - Create a new delivery request
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createServerClient();
+        // Get authenticated user from cookies
+        const { user } = await getAuthenticatedUser(request);
 
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            console.error('[DeliveriesAPI] Auth error:', authError);
+        if (!user) {
+            console.error('[DeliveriesAPI] POST - User not authenticated');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        // Use server client (service role) to insert data
+        const supabase = createServerClient();
 
         console.log('[DeliveriesAPI] Creating delivery for user:', user.id);
 
@@ -102,14 +137,13 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/deliveries - List user's deliveries
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
     try {
-        const supabase = createServerClient();
+        // Get authenticated user from cookies
+        const { user } = await getAuthenticatedUser(request);
 
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            console.error('[DeliveriesAPI] Auth error:', authError);
+        if (!user) {
+            console.error('[DeliveriesAPI] GET - User not authenticated');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -121,6 +155,7 @@ export async function GET(_request: NextRequest) {
 
         if (!supabaseUrl || !serviceKey) {
             // Fallback to JS client if env vars missing
+            const supabase = createServerClient();
             const { data, error } = await supabase
                 .from('deliveries')
                 .select('*')
@@ -159,6 +194,7 @@ export async function GET(_request: NextRequest) {
         } catch (restError) {
             console.error('[DeliveriesAPI] REST API error, falling back to JS client:', restError);
             // Fallback to JS client
+            const supabase = createServerClient();
             const { data, error } = await supabase
                 .from('deliveries')
                 .select('*')

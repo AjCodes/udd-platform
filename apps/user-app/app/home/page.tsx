@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createBrowserClient } from '@udd/shared';
+import { createBrowserClient } from '@/lib/supabase';
 import type { Delivery } from '@udd/shared';
 import BottomNav from '@/components/BottomNav';
 import DeliveryCard from '@/components/DeliveryCard';
@@ -19,6 +19,7 @@ export default function DashboardPage() {
     const [toastMessage, setToastMessage] = useState('');
     const supabaseRef = useRef(createBrowserClient());
     const userIdRef = useRef<string | null>(null);
+    const toastShownRef = useRef(false);
 
     // Get time-appropriate greeting
     const getGreeting = () => {
@@ -42,13 +43,7 @@ export default function DashboardPage() {
 
             userIdRef.current = authUser.id;
 
-            // Check for login success message
-            const loginSuccess = searchParams.get('login');
-            if (loginSuccess === 'success') {
-                setToastMessage('Successfully logged in!');
-                setShowToast(true);
-                setTimeout(() => setShowToast(false), 3000);
-            }
+            // Toast is now handled separately to avoid repeating
 
             // Get user profile from db
             const { data: profile, error: profileError } = await supabase
@@ -72,7 +67,16 @@ export default function DashboardPage() {
             // Get active deliveries through API to ensure consistency with operator dashboard
             // Use the same filtering logic as operator dashboard: ['pending', 'assigned', 'in_transit']
             try {
-                const deliveriesRes = await fetch('/api/deliveries', { cache: 'no-store' });
+                // Get the access token to pass to API
+                const { data: { session } } = await supabase.auth.getSession();
+                const accessToken = session?.access_token;
+
+                const deliveriesRes = await fetch('/api/deliveries', {
+                    cache: 'no-store',
+                    headers: accessToken ? {
+                        'Authorization': `Bearer ${accessToken}`
+                    } : {}
+                });
                 if (deliveriesRes.ok) {
                     const allDeliveries: Delivery[] = await deliveriesRes.json();
 
@@ -137,6 +141,19 @@ export default function DashboardPage() {
             setLoading(false);
         }
     }, [router, searchParams]);
+
+    // Handle login success toast - runs only once on mount
+    useEffect(() => {
+        const loginSuccess = searchParams.get('login');
+        if (loginSuccess === 'success' && !toastShownRef.current) {
+            toastShownRef.current = true;
+            setToastMessage('Successfully logged in!');
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+            // Clear the URL parameter to prevent showing again on page refresh
+            window.history.replaceState({}, '', '/home');
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         let subscription: { unsubscribe: () => void } | null = null;
@@ -228,7 +245,39 @@ export default function DashboardPage() {
         );
     }
 
-    const firstName = user?.full_name?.split(' ')[0] || 'there';
+    // Get a clean display name (avoid showing UIDs or long strings)
+    const getDisplayName = () => {
+        const name = user?.full_name;
+
+        // If no name, use first part of email or generic greeting
+        if (!name) {
+            const emailPart = user?.email?.split('@')[0];
+            // Avoid long email prefixes too
+            if (emailPart && emailPart.length <= 15) {
+                return emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+            }
+            return 'there';
+        }
+
+        // Check if name looks like a UID (long alphanumeric with dashes)
+        if (name.match(/^[a-f0-9-]{20,}$/i)) {
+            const emailPart = user?.email?.split('@')[0];
+            if (emailPart && emailPart.length <= 15) {
+                return emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+            }
+            return 'there';
+        }
+
+        // Get first name only, and limit length
+        const firstName = name.split(' ')[0];
+        if (firstName.length > 15) {
+            return firstName.slice(0, 15);
+        }
+
+        return firstName;
+    };
+
+    const firstName = getDisplayName();
 
     return (
         <div className="min-h-screen pb-24">
@@ -251,13 +300,13 @@ export default function DashboardPage() {
                 style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)' }}
             >
                 <div className="flex items-center gap-3 mb-5">
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden backdrop-blur-sm">
+                    <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-md">
                         <Image
-                            src="/drone_icon_high_res.png"
+                            src="/udd-logo-icon.png"
                             alt="UDD"
                             width={100}
                             height={100}
-                            className="w-full h-full object-contain p-1"
+                            className="w-full h-full object-contain"
                         />
                     </div>
                     <h1 className="text-xl font-bold">Universal Delivery Drone</h1>

@@ -1,7 +1,6 @@
 -- ========================================
 -- UDD Platform - Database Reset Script
 -- ========================================
--- Run this in Supabase SQL Editor to reset all tables
 -- WARNING: This will DELETE all existing data!
 -- ========================================
 
@@ -25,7 +24,7 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   full_name TEXT,
   phone TEXT,
-  role TEXT NOT NULL CHECK (role IN ('customer', 'operator', 'admin')) DEFAULT 'customer',
+  role TEXT DEFAULT 'customer',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -33,7 +32,7 @@ CREATE TABLE users (
 CREATE TABLE drones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('idle', 'flying', 'returning', 'charging', 'offline')) DEFAULT 'idle',
+  status TEXT DEFAULT 'idle',
   battery_level INTEGER DEFAULT 100,
   current_lat DOUBLE PRECISION,
   current_lng DOUBLE PRECISION,
@@ -46,7 +45,7 @@ CREATE TABLE deliveries (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   operator_id UUID REFERENCES auth.users(id),
   drone_id UUID REFERENCES drones(id),
-  status TEXT NOT NULL CHECK (status IN ('pending', 'assigned', 'in_transit', 'delivered', 'cancelled')) DEFAULT 'pending',
+  status TEXT DEFAULT 'pending',
   pin TEXT NOT NULL,  -- 6-digit unlock code for storage compartment
   pickup_lat DOUBLE PRECISION NOT NULL,
   pickup_lng DOUBLE PRECISION NOT NULL,
@@ -96,41 +95,29 @@ CREATE POLICY "Users can view own profile" ON users
 CREATE POLICY "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
--- Operators can view all drones
-CREATE POLICY "Operators can view drones" ON drones
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
-  );
+-- Drones are visible to all for demo
+CREATE POLICY "Anyone can view drones" ON drones
+  FOR SELECT USING (true);
 
--- Customers see their own deliveries
-CREATE POLICY "Customers see own deliveries" ON deliveries
-  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can update drones" ON drones
+  FOR UPDATE USING (true);
 
--- Operators see pending and their claimed deliveries
-CREATE POLICY "Operators see available and claimed deliveries" ON deliveries
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
-    AND (status = 'pending' OR operator_id = auth.uid())
-  );
+-- Deliveries are visible to all for demo
+CREATE POLICY "Anyone can view deliveries" ON deliveries
+  FOR SELECT USING (true);
 
-CREATE POLICY "Customers can create deliveries" ON deliveries
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Anyone can update deliveries" ON deliveries
+  FOR UPDATE USING (true);
 
-CREATE POLICY "Operators can update claimed deliveries" ON deliveries
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
-    AND (status = 'pending' OR operator_id = auth.uid())
-  );
+CREATE POLICY "Anyone can insert deliveries" ON deliveries
+  FOR INSERT WITH CHECK (true);
 
--- Allow anonymous users to view pending deliveries for dashboard real-time updates
-CREATE POLICY "Anon can view pending deliveries" ON deliveries
-  FOR SELECT USING (auth.uid() IS NULL AND status = 'pending');
+-- Telemetry is visible to all for demo
+CREATE POLICY "Anyone can view telemetry" ON telemetry
+  FOR SELECT USING (true);
 
--- Operators can view telemetry
-CREATE POLICY "Operators can view telemetry" ON telemetry
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
-  );
+CREATE POLICY "Anyone can insert telemetry" ON telemetry
+  FOR INSERT WITH CHECK (true);
 
 -- ========================================
 -- ENABLE REALTIME
@@ -139,7 +126,35 @@ ALTER PUBLICATION supabase_realtime ADD TABLE deliveries;
 ALTER PUBLICATION supabase_realtime ADD TABLE telemetry;
 ALTER PUBLICATION supabase_realtime ADD TABLE drones;
 
--- Insert test drone
+-- Trigger to ensure status is 'charging' if 'idle' but battery < 100%
+CREATE OR REPLACE FUNCTION handle_drone_charging_status()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'idle' AND NEW.battery_level < 100 THEN
+    NEW.status := 'charging';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER enforce_charging_status
+  BEFORE INSERT OR UPDATE ON drones
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_drone_charging_status();
+
+-- Insert test drones
 INSERT INTO drones (name, status, battery_level, current_lat, current_lng)
-VALUES ('Drone-001', 'idle', 100, 51.4416, 5.4697);
+VALUES 
+  ('Drone-001', 'idle', 100, 51.4416, 5.4697),
+  ('Drone-002', 'charging', 85, 51.4403, 5.4693),
+  ('Drone-003', 'charging', 92, 51.4438, 5.4717),
+  ('Drone-004', 'charging', 45, 51.4416, 5.4696),
+  ('Drone-005', 'idle', 100, 51.4418, 5.4717),
+  ('Drone-006', 'charging', 78, 51.4425, 5.4705),
+  ('Drone-007', 'charging', 95, 51.4410, 5.4680),
+  ('Drone-008', 'charging', 62, 51.4430, 5.4725),
+  ('Drone-009', 'charging', 88, 51.4405, 5.4710),
+  ('Drone-010', 'idle', 100, 51.4420, 5.4690),
+  ('Drone-011', 'charging', 55, 51.4415, 5.4730),
+  ('Drone-012', 'charging', 82, 51.4440, 5.4685);
 

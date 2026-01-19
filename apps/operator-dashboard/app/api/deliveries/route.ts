@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@udd/shared';
+import { createRoleAwareClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// GET /api/deliveries - List all deliveries (uses service role key to bypass RLS)
+// GET /api/deliveries - List all deliveries (uses role-aware client to bypass RLS)
 export async function GET() {
     try {
-        // Use the shared client which is configured with service role
-        const supabase = createServerClient();
+        const supabase = createRoleAwareClient();
 
         // Check the key source
         const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

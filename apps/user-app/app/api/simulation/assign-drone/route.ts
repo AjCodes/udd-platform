@@ -18,31 +18,42 @@ export async function POST(request: Request) {
 
         console.log(`[Simulation] finding drone for delivery: ${deliveryId}`);
 
-        // 1. Find an idle drone (Prefer Drone-01 for simulation visibility)
-        const { data: preferredDrone } = await supabase
-            .from('drones')
-            .select('*')
-            .eq('name', 'Drone-01')
-            .single();
+        // 1. Fetch all drones and active deliveries to find a truly available drone
+        const { data: allDrones } = await supabase.from('drones').select('*');
+        const { data: activeDeliveries } = await supabase
+            .from('deliveries')
+            .select('drone_id')
+            .in('status', ['assigned', 'in_transit']);
 
+        if (!allDrones) throw new Error('No drones found in fleet');
+
+        const busyDroneIds = new Set(activeDeliveries?.map(d => d.drone_id) || []);
+
+        // 2. Selection Logic
         let selectedDrone;
 
-        if (preferredDrone && preferredDrone.status === 'idle') {
-            selectedDrone = preferredDrone;
-        } else {
-            // Fallback: Find any idle drone
-            const { data: idleDrones } = await supabase
-                .from('drones')
-                .select('*')
-                .eq('status', 'idle')
-                .limit(1);
+        // Priority 1: Drone-01 if idle/charging
+        selectedDrone = allDrones.find(d =>
+            d.name === 'Drone-01' && (d.status === 'idle' || d.status === 'charging')
+        );
 
-            if (idleDrones && idleDrones.length > 0) {
-                selectedDrone = idleDrones[0];
-            } else if (preferredDrone) {
-                // Last resort: just use Drone-01 even if not idle (force it for demo)
-                selectedDrone = preferredDrone;
-            }
+        // Priority 2: Any other idle/charging drone
+        if (!selectedDrone) {
+            selectedDrone = allDrones.find(d =>
+                (d.status === 'idle' || d.status === 'charging') && !busyDroneIds.has(d.id)
+            );
+        }
+
+        // Priority 3: Re-task a "stuck" flying drone (flying/returning but no active delivery)
+        if (!selectedDrone) {
+            selectedDrone = allDrones.find(d =>
+                ['flying', 'returning'].includes(d.status) && !busyDroneIds.has(d.id)
+            );
+        }
+
+        // Priority 4: Fallback to Drone-01 (Force it for simulation)
+        if (!selectedDrone) {
+            selectedDrone = allDrones.find(d => d.name === 'Drone-01');
         }
 
         if (!selectedDrone) {

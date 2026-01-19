@@ -382,8 +382,8 @@ export default function DeliveryTrackingPage() {
 
             <div className="p-5 flex-1 space-y-5">
                 {/* Status Card */}
-                <div className="card text-center py-8">
-                    <div className={`mb-6 flex justify-center relative ${status.animate ? 'animate-pulse-float' : ''}`}>
+                <div className="card text-center py-8 pb-4">
+                    <div className={`mb-5 flex justify-center relative ${status.animate ? 'animate-pulse-float' : ''}`}>
                         {delivery.status === 'delivered' ? (
                             <div className="relative w-48 h-48 flex items-center justify-center">
                                 {/* Animated Mesh Gradient Circle */}
@@ -412,7 +412,7 @@ export default function DeliveryTrackingPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="relative flex items-center justify-center w-64 h-64" style={{ perspective: '1000px' }}>
+                            <div className="relative flex items-center justify-center w-64 h-52" style={{ perspective: '1000px' }}>
                                 {/* The Glowing Ring (Searching/Assigned Phase) */}
                                 {delivery.status !== 'in_transit' && (
                                     <div className={`absolute w-[180px] h-[180px] rounded-full border-[2.5px] border-emerald-400/40 ${delivery.status === 'assigned' ? 'animate-ring-glow opacity-50' :
@@ -420,13 +420,13 @@ export default function DeliveryTrackingPage() {
                                         }`} style={{
                                             boxShadow: '0 0 15px rgba(52, 211, 153, 0.3), inset 0 0 15px rgba(52, 211, 153, 0.3)',
                                             transform: 'rotateX(65deg)',
-                                            top: '52%'
+                                            top: '32%'
                                         }}></div>
                                 )}
 
                                 {/* The 3D Parcel Box (Delivery Phase) */}
                                 {delivery.status === 'in_transit' && (
-                                    <div className="absolute w-24 h-24 animate-parcel" style={{ top: '55%', transformStyle: 'preserve-3d' }}>
+                                    <div className="absolute w-24 h-24 animate-parcel" style={{ top: '35%', transformStyle: 'preserve-3d' }}>
                                         {/* Box Sides - 6 Sides for Full 3D */}
                                         <div className="absolute inset-0 bg-[#D2B48C] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateZ(48px)' }}>
                                             {/* Tape vertical */}
@@ -451,7 +451,7 @@ export default function DeliveryTrackingPage() {
                                 <div className={`absolute w-[200px] h-[100px] bg-emerald-400/15 rounded-[100%] blur-[35px] ${delivery.status === 'in_transit' ? 'animate-pulse' : ''
                                     }`} style={{
                                         transform: 'rotateX(65deg)',
-                                        top: '50%'
+                                        top: '30%'
                                     }}></div>
 
                                 <Image
@@ -463,7 +463,7 @@ export default function DeliveryTrackingPage() {
                                     style={{
                                         filter: delivery.status === 'in_transit' ? 'brightness(1.1) contrast(1.1)' : 'none',
                                         transform: delivery.status === 'in_transit' ? 'translateY(-8px) rotate(1deg)' : 'none',
-                                        marginTop: '-15px'
+                                        marginTop: '-55px'
                                     }}
                                 />
                             </div>

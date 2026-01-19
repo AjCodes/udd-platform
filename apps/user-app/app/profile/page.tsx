@@ -84,13 +84,22 @@ export default function ProfilePage() {
         const { data: { user: authUser } } = await supabase.auth.getUser();
 
         if (authUser) {
-            const { error } = await supabase
-                .from('users')
-                .update({ phone: cleaned })
-                .eq('id', authUser.id);
+            // Use API route to bypass RLS
+            const res = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: authUser.id,
+                    email: authUser.email || '',
+                    phone: cleaned,
+                    fullName: authUser.user_metadata?.full_name || authUser.user_metadata?.name || null,
+                }),
+            });
 
-            if (error) {
-                alert('Failed to update phone number: ' + error.message);
+            if (!res.ok) {
+                const error = await res.json();
+                console.error('Phone update error:', error);
+                alert('Failed to update phone number: ' + error.error);
             } else {
                 setUser(prev => prev ? { ...prev, phone: cleaned } : null);
                 setPhoneValue(cleaned);

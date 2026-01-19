@@ -8,10 +8,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 
 // Price calculation: base fee + distance fee + weight fee
 function calculatePrice(distanceKm: number, parcelSize: string): number {
-    const baseFee = 299; // €2.99 base fee in cents
+    const baseFee = 99; // €0.99 base fee in cents
 
-    // Distance fee: €0.50 per km
-    const distanceFee = Math.round(distanceKm * 50);
+    // Distance fee: €0.10 per km
+    const distanceFee = Math.round(distanceKm * 10);
 
     // Weight fee based on parcel size
     const weightFees: Record<string, number> = {
@@ -50,6 +50,15 @@ export async function POST(request: NextRequest) {
 
         // Calculate distance and price
         const distanceKm = calculateDistance(pickupLat, pickupLng, dropoffLat, dropoffLng);
+
+        // Enforce 20km mission radius
+        if (distanceKm > 20) {
+            return NextResponse.json(
+                { error: `Mission distance (${distanceKm.toFixed(1)}km) exceeds maximum drone radius (20km).` },
+                { status: 400 }
+            );
+        }
+
         const priceInCents = calculatePrice(distanceKm, parcelSize);
 
         // Create Stripe Checkout Session

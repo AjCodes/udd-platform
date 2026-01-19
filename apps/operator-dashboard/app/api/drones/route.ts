@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@udd/shared';
+import { createRoleAwareClient } from '@/lib/supabase';
 
 // GET /api/drones - List all drones
 export async function GET() {
     try {
-        const supabase = createServerClient();
+        const supabase = createRoleAwareClient();
 
         const { data, error } = await supabase
             .from('drones')

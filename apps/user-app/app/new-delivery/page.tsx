@@ -40,8 +40,8 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 // Calculate price
 function calculatePrice(distanceKm: number, parcelSize: string): number {
-    const baseFee = 2.99;
-    const distanceFee = distanceKm * 0.50;
+    const baseFee = 0.99;
+    const distanceFee = distanceKm * 0.10;
     const weightFee = PARCEL_SIZES.find(s => s.id === parcelSize)?.extraCost || 0;
     return baseFee + distanceFee + weightFee;
 }
@@ -188,6 +188,7 @@ export default function NewDeliveryPage() {
     const isReceiverPhoneValid = validateDutchPhone(receiverPhone);
     const isFormValid = pickupCoords !== null &&
         dropoffCoords !== null &&
+        distance <= 20 &&
         parcelSize !== '' &&
         senderName.trim() !== '' &&
         isSenderPhoneValid &&
@@ -511,11 +512,11 @@ export default function NewDeliveryPage() {
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Base fee</span>
-                                <span>€2.99</span>
+                                <span>€0.99</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600">Distance ({distance.toFixed(1)} km × €0.50)</span>
-                                <span>€{(distance * 0.50).toFixed(2)}</span>
+                                <span className="text-gray-600">Distance ({distance.toFixed(1)} km × €0.10)</span>
+                                <span>€{(distance * 0.10).toFixed(2)}</span>
                             </div>
                             {(PARCEL_SIZES.find(s => s.id === parcelSize)?.extraCost ?? 0) > 0 && (
                                 <div className="flex justify-between">

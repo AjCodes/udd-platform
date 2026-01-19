@@ -129,7 +129,7 @@ export default function DeliveryDetailPage() {
             {/* Header */}
             <header className="bg-gray-800/50 backdrop-blur-md sticky top-0 z-10 border-b border-gray-700 px-6 py-4">
                 <div className="flex items-center gap-4">
-                    <Link href="/deliveries" className="text-gray-400 hover:text-white transition-colors bg-gray-800 p-2 rounded-lg">
+                    <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors bg-gray-800 p-2 rounded-lg">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
@@ -271,7 +271,7 @@ export default function DeliveryDetailPage() {
                             <div className="pt-4 grid grid-cols-2 gap-6">
                                 <div>
                                     <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Package</p>
-                                    <p className="text-white font-mono bg-gray-900/50 px-2 py-1 rounded inline-block">[{delivery.package_description || 'STANDARD'}]</p>
+                                    <p className="text-white font-mono bg-gray-900/50 px-2 py-1 rounded inline-block">{delivery.package_description || 'STANDARD'}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Unlock PIN</p>
@@ -324,7 +324,7 @@ export default function DeliveryDetailPage() {
                         {delivery.drone ? (
                             <div className="space-y-8 flex-1 flex flex-col">
                                 <div className="flex items-center gap-5 p-4 bg-gray-900/30 rounded-2xl border border-white/5">
-                                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center shadow-lg transform rotate-45 ${delivery.drone.status === 'flying' ? 'bg-cyan-500 shadow-cyan-500/20' : 'bg-green-500 shadow-green-500/20'
+                                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center shadow-lg transform rotate-45 ${delivery.drone.status === 'flying' ? 'bg-violet-500 shadow-violet-500/20' : 'bg-green-500 shadow-green-500/20'
                                         }`}>
                                         <svg className="w-8 h-8 text-white -rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -333,11 +333,11 @@ export default function DeliveryDetailPage() {
                                     <div>
                                         <p className="text-xl font-black text-white">{delivery.drone.name}</p>
                                         <div className="flex items-center gap-2">
-                                            <span className={`w-2 h-2 rounded-full animate-pulse ${delivery.drone.status === 'flying' ? 'bg-cyan-400' : 'bg-green-400'
+                                            <span className={`w-2 h-2 rounded-full animate-pulse ${delivery.drone.status === 'flying' ? 'bg-violet-400' : 'bg-green-400'
                                                 }`} />
-                                            <p className={`text-xs font-bold uppercase tracking-widest ${delivery.drone.status === 'flying' ? 'text-cyan-400' : 'text-green-400'
+                                            <p className={`text-xs font-bold uppercase tracking-widest ${delivery.drone.status === 'flying' ? 'text-violet-400' : 'text-green-400'
                                                 }`}>
-                                                {delivery.drone.status}
+                                                {delivery.drone.status === 'flying' ? 'DELIVERING' : delivery.drone.status}
                                             </p>
                                         </div>
                                     </div>

@@ -63,16 +63,43 @@ export async function POST(
         // Update drone status based on command
         let newStatus = drone.status;
         if (command === 'takeoff' || command === 'hover') newStatus = 'flying';
-        if (command === 'land') newStatus = 'idle';
-        if (command === 'return_home') {
+        if (command === 'land') {
             newStatus = (drone.battery_level || 0) < 100 ? 'charging' : 'idle';
         }
+        if (command === 'return_home') {
+            newStatus = 'returning'; // First set to returning
+        }
+
+        console.log(`[CommandAPI] Current status: ${drone.status}, Target status: ${newStatus}`);
 
         if (newStatus !== drone.status) {
-            await supabase
+            console.log(`[CommandAPI] Updating drone ${params.id} status to ${newStatus}`);
+            const { error: updateError, data: updatedData } = await supabase
                 .from('drones')
                 .update({ status: newStatus })
-                .eq('id', params.id);
+                .eq('id', params.id)
+                .select();
+
+            if (updateError) {
+                console.error('[CommandAPI] Failed to update drone status in DB:', updateError);
+            } else {
+                console.log('[CommandAPI] Successfully updated drone status in DB:', updatedData?.[0]?.status);
+            }
+
+            // For return_home, schedule a delayed update to charging/idle after 2-10 seconds
+            if (command === 'return_home') {
+                const delay = Math.floor(Math.random() * 8000) + 2000; // 2-10 seconds
+                setTimeout(async () => {
+                    const finalStatus = (drone.battery_level || 0) < 100 ? 'charging' : 'idle';
+                    console.log(`[CommandAPI] Return complete, updating drone ${params.id} to ${finalStatus}`);
+                    await supabase
+                        .from('drones')
+                        .update({ status: finalStatus })
+                        .eq('id', params.id);
+                }, delay);
+            }
+        } else {
+            console.log('[CommandAPI] Drone already in target status, skipping DB update');
         }
 
         return NextResponse.json({

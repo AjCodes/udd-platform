@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { createBrowserClient } from '@/lib/supabase';
 import type { Delivery } from '@udd/shared';
-import HoldToUnlock from '@/components/HoldToUnlock';
 import TrackingMap from '@/components/TrackingMap';
 
 export default function DeliveryTrackingPage() {
@@ -13,7 +12,6 @@ export default function DeliveryTrackingPage() {
     const params = useParams();
     const [delivery, setDelivery] = useState<Delivery | null>(null);
     const [loading, setLoading] = useState(true);
-    const [unlocking, setUnlocking] = useState(false);
     const [copied, setCopied] = useState(false);
     const [droneLocation, setDroneLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showMap, setShowMap] = useState(false);
@@ -113,20 +111,6 @@ export default function DeliveryTrackingPage() {
         }
     };
 
-    const handleUnlock = async () => {
-        if (!delivery) return;
-        setUnlocking(true);
-
-        const supabase = createBrowserClient();
-        await supabase
-            .from('deliveries')
-            .update({ status: 'delivered', updated_at: new Date().toISOString() })
-            .eq('id', delivery.id);
-
-        setTimeout(() => {
-            router.push('/dashboard?delivered=true');
-        }, 1500);
-    };
 
     // Get status info
     const getStatusInfo = () => {
@@ -445,21 +429,6 @@ export default function DeliveryTrackingPage() {
                     </button>
                 </div>
 
-                {/* Unlock section - only show if in_transit */}
-                {delivery.status === 'in_transit' && (
-                    <div className="mt-4">
-                        {unlocking ? (
-                            <div className="card text-center py-8" style={{ backgroundColor: 'var(--success)', border: 'none' }}>
-                                <div className="text-5xl mb-3">🔓</div>
-                                <p className="text-xl font-semibold text-white">
-                                    Unlocked Successfully!
-                                </p>
-                            </div>
-                        ) : (
-                            <HoldToUnlock onUnlock={handleUnlock} />
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Track Drone Map Modal */}

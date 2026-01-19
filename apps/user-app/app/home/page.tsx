@@ -296,21 +296,9 @@ export default function HomePage() {
 
             {/* Header - Teal gradient */}
             <div
-                className="text-white px-5 pt-14 pb-10 rounded-b-3xl"
+                className="text-white px-5 pt-10 pb-6 rounded-b-3xl"
                 style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)' }}
             >
-                <div className="flex items-center gap-3 mb-5">
-                    <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-md">
-                        <Image
-                            src="/udd-logo-icon.png"
-                            alt="UDD"
-                            width={100}
-                            height={100}
-                            className="w-full h-full object-contain"
-                        />
-                    </div>
-                    <h1 className="text-xl font-bold">Universal Delivery Drone</h1>
-                </div>
                 <h2 className="text-3xl font-bold">
                     {getGreeting()}, {firstName}!
                 </h2>

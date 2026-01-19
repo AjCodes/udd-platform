@@ -316,13 +316,45 @@ export default function DeliveryTrackingPage() {
                     animation: spin-slow 10s linear infinite;
                 }
 
-                @keyframes reverse-spin-slow {
-                    from { transform: rotate(360deg); }
-                    to { transform: rotate(0deg); }
-                }
-
                 .animate-reverse-spin-slow {
                     animation: reverse-spin-slow 7s linear infinite;
+                }
+
+                @keyframes ring-glow {
+                    0%, 100% { opacity: 0.3; filter: blur(8px); transform: rotateX(65deg) scale(1); }
+                    50% { opacity: 0.6; filter: blur(12px); transform: rotateX(65deg) scale(1.05); }
+                }
+
+                .animate-ring-glow {
+                    animation: ring-glow 3s ease-in-out infinite;
+                }
+
+                @keyframes ring-flow {
+                    from { transform: rotateX(65deg) rotate(0deg); }
+                    to { transform: rotateX(65deg) rotate(360deg); }
+                }
+
+                .animate-ring-flow {
+                    animation: ring-flow 4s linear infinite;
+                }
+
+                @keyframes pulsate-ring {
+                    0%, 100% { opacity: 0.2; transform: rotateX(65deg) scale(1); }
+                    50% { opacity: 0.4; transform: rotateX(65deg) scale(1.02); }
+                }
+
+                .pulsate-ring {
+                    animation: pulsate-ring 4s ease-in-out infinite;
+                }
+
+                /* 3D Parcel Box */
+                @keyframes float-parcel {
+                    0%, 100% { transform: rotateX(65deg) rotate(45deg) translateZ(0px); }
+                    50% { transform: rotateX(65deg) rotate(45deg) translateZ(10px); }
+                }
+
+                .animate-parcel {
+                    animation: float-parcel 3s ease-in-out infinite;
                 }
             `}</style>
 
@@ -380,16 +412,58 @@ export default function DeliveryTrackingPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="relative group">
-                                <div className="absolute -inset-4 bg-teal-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <div className="relative flex items-center justify-center w-64 h-64" style={{ perspective: '1000px' }}>
+                                {/* The Glowing Ring (Searching/Assigned Phase) */}
+                                {delivery.status !== 'in_transit' && (
+                                    <div className={`absolute w-[180px] h-[180px] rounded-full border-[2.5px] border-emerald-400/40 ${delivery.status === 'assigned' ? 'animate-ring-glow opacity-50' :
+                                        'opacity-30 pulsate-ring'
+                                        }`} style={{
+                                            boxShadow: '0 0 15px rgba(52, 211, 153, 0.3), inset 0 0 15px rgba(52, 211, 153, 0.3)',
+                                            transform: 'rotateX(65deg)',
+                                            top: '52%'
+                                        }}></div>
+                                )}
+
+                                {/* The 3D Parcel Box (Delivery Phase) */}
+                                {delivery.status === 'in_transit' && (
+                                    <div className="absolute w-24 h-24 animate-parcel" style={{ top: '55%', transformStyle: 'preserve-3d' }}>
+                                        {/* Box Sides - 6 Sides for Full 3D */}
+                                        <div className="absolute inset-0 bg-[#D2B48C] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateZ(48px)' }}>
+                                            {/* Tape vertical */}
+                                            <div className="absolute top-0 bottom-0 left-1/2 w-4 bg-[#8B4513]/20 -translate-x-1/2"></div>
+                                        </div>
+                                        <div className="absolute inset-0 bg-[#C1A273] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateZ(-48px) rotateY(180deg)' }}></div>
+                                        <div className="absolute inset-0 bg-[#B08D57] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateX(48px) rotateY(90deg)' }}></div>
+                                        <div className="absolute inset-0 bg-[#B08D57] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateX(-48px) rotateY(-90deg)' }}></div>
+                                        <div className="absolute inset-0 bg-[#E3C598] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateY(-48px) rotateX(90deg)' }}>
+                                            {/* Tape cross */}
+                                            <div className="absolute top-0 bottom-0 left-1/2 w-4 bg-[#8B4513]/20 -translate-x-1/2"></div>
+                                            <div className="absolute left-0 right-0 top-1/2 h-4 bg-[#8B4513]/20 -translate-y-1/2"></div>
+                                        </div>
+                                        <div className="absolute inset-0 bg-[#A68045] border-[1.5px] border-[#8B4513]/30" style={{ transform: 'translateY(48px) rotateX(-90deg)' }}></div>
+
+                                        {/* Drop Shadow */}
+                                        <div className="absolute inset-0 bg-black/10 blur-2xl translate-y-16 rounded-full" style={{ transform: 'rotateX(90deg) translateZ(-80px) scale(2)' }}></div>
+                                    </div>
+                                )}
+
+                                {/* Background Ambient Glow */}
+                                <div className={`absolute w-[200px] h-[100px] bg-emerald-400/15 rounded-[100%] blur-[35px] ${delivery.status === 'in_transit' ? 'animate-pulse' : ''
+                                    }`} style={{
+                                        transform: 'rotateX(65deg)',
+                                        top: '50%'
+                                    }}></div>
+
                                 <Image
-                                    src="/udd-logo-icon.png"
+                                    src="/drone-3d-transparent.png"
                                     alt="UDD Drone"
-                                    width={192}
-                                    height={192}
-                                    className="w-48 h-48 object-contain mix-blend-multiply relative z-10 scale-110"
+                                    width={220}
+                                    height={220}
+                                    className="relative z-10 drop-shadow-2xl transition-all duration-700"
                                     style={{
-                                        filter: 'contrast(1.1)',
+                                        filter: delivery.status === 'in_transit' ? 'brightness(1.1) contrast(1.1)' : 'none',
+                                        transform: delivery.status === 'in_transit' ? 'translateY(-8px) rotate(1deg)' : 'none',
+                                        marginTop: '-15px'
                                     }}
                                 />
                             </div>

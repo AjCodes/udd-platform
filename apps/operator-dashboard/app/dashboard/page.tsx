@@ -248,19 +248,20 @@ export default function DashboardPage() {
                                 ) : (
                                     <div className="space-y-3">
                                         {drones.map((drone) => (
-                                            <div
+                                            <Link
                                                 key={drone.id}
-                                                className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 transition-colors"
+                                                href={`/control/${drone.id}`}
+                                                className="block bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-cyan-500/50 transition-all hover:bg-gray-700 group ring-1 ring-transparent hover:ring-cyan-500/20"
                                             >
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                                                        <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
                                                             <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                                             </svg>
                                                         </div>
                                                         <div>
-                                                            <p className="font-medium text-white">{drone.name}</p>
+                                                            <p className="font-medium text-white group-hover:text-cyan-400 transition-colors">{drone.name}</p>
                                                             <p className="text-[10px] text-gray-500 font-mono tracking-tight uppercase">
                                                                 {drone.id.slice(0, 8)} | LAT: {drone.current_lat?.toFixed(4)} LNG: {drone.current_lng?.toFixed(4)}
                                                             </p>
@@ -276,7 +277,7 @@ export default function DashboardPage() {
                                                         style={{ width: `${drone.battery_level}%` }}
                                                     ></div>
                                                 </div>
-                                            </div>
+                                            </Link>
                                         ))}
                                     </div>
                                 )}

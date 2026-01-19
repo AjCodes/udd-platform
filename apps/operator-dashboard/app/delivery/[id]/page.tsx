@@ -219,12 +219,14 @@ export default function DeliveryDetailPage() {
                 <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-8 shadow-xl">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-8">Delivery Progress</h3>
                     <div className="flex justify-between items-start relative px-4">
-                        {/* Connecting Line */}
-                        <div className="absolute top-6 left-12 right-12 h-0.5 bg-gray-700 -z-0" />
-                        <div
-                            className="absolute top-6 left-12 h-0.5 bg-cyan-500 transition-all duration-1000 -z-0"
-                            style={{ width: `${(progressSteps.filter(s => s.completed).length - 1) / (progressSteps.length - 1) * 100}%` }}
-                        />
+                        {/* Connecting Line Wrapper */}
+                        <div className="absolute top-6 left-12 right-12 h-0.5 -z-0">
+                            <div className="absolute inset-0 bg-gray-700" />
+                            <div
+                                className="absolute inset-y-0 left-0 bg-cyan-500 transition-all duration-1000"
+                                style={{ width: `${(progressSteps.filter(s => s.completed).length - 1) / (progressSteps.length - 1) * 100}%` }}
+                            />
+                        </div>
 
                         {progressSteps.map((step) => (
                             <div key={step.status} className="flex flex-col items-center flex-1 relative z-10 px-2">

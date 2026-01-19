@@ -31,7 +31,7 @@ const mapOptions = {
     ]
 };
 
-const TrackingMap: React.FC<TrackingMapProps> = ({ droneLocation, pickupLocation, dropoffLocation }) => {
+const TrackingMap = ({ droneLocation, pickupLocation, dropoffLocation }: TrackingMapProps) => {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''

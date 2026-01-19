@@ -192,10 +192,17 @@ export default function HistoryPage() {
                                         <div className="flex items-center gap-2">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    {delivery.user_id === currentUserId ? (
+                                                    {typeFilter === 'sent' ? (
                                                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tighter">Sent</span>
+                                                    ) : typeFilter === 'received' ? (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-tighter">Received</span>
                                                     ) : (
-                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-100 uppercase tracking-tighter">Received</span>
+                                                        /* All tab - dynamic check */
+                                                        delivery.receiver_phone === userPhone ? (
+                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-tighter">Received</span>
+                                                        ) : (
+                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tighter">Sent</span>
+                                                        )
                                                     )}
                                                 </div>
                                                 <p className="font-semibold text-gray-900">

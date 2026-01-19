@@ -145,15 +145,18 @@ export default function DroneControlPage() {
             <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href="/deliveries" className="text-gray-400 hover:text-white transition-colors">
+                        <button
+                            onClick={() => router.back()}
+                            className="text-gray-400 hover:text-white transition-colors"
+                        >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
-                        </Link>
+                        </button>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center overflow-hidden">
                                 <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center p-2 border border-white/20 shadow-lg">
-                                    <img src="/drone_icon_transparent.png" alt="UDD" className="w-full h-full object-contain" />
+                                    <img src="/udd-logo-icon.png" alt="UDD" className="w-full h-full object-contain" />
                                 </div>
                             </div>
                             <div>
@@ -302,23 +305,13 @@ export default function DroneControlPage() {
                                     </svg>
                                     {commandLoading === 'return_home' ? 'SENDING...' : 'RETURN HOME'}
                                 </button>
-                                <button
-                                    onClick={() => sendCommand('land')}
-                                    disabled={commandLoading !== null}
-                                    className="w-full py-4 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-black transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-3 active:scale-[0.98]"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                    </svg>
-                                    {commandLoading === 'land' ? 'SENDING...' : 'LAND'}
-                                </button>
                             </div>
                         </div>
 
-                        {/* Unlock Storage */}
+                        {/* Storage Compartment */}
                         <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden">
                             <div className="px-6 py-4 border-b border-gray-700 bg-gray-800/50">
-                                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Cargo Handling</h2>
+                                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Storage Compartment</h2>
                             </div>
                             <div className="p-4">
                                 <button
@@ -336,6 +329,6 @@ export default function DroneControlPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

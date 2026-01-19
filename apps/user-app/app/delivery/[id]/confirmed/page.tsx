@@ -61,8 +61,8 @@ export default function DeliveryConfirmedPage() {
                 Share PIN
             </button>
 
-            <Link href="/dashboard" className="font-medium hover:underline" style={{ color: 'var(--primary)' }}>
-                Back to Dashboard
+            <Link href="/home" className="font-medium hover:underline" style={{ color: 'var(--primary)' }}>
+                Back to Home
             </Link>
         </div>
     );

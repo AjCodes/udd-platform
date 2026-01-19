@@ -63,6 +63,7 @@ export interface Delivery {
     sender_phone: string;
     receiver_name: string;
     receiver_phone: string;
+    receiver_accepted: boolean | null;
     created_at: string;
     updated_at: string;
 }

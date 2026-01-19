@@ -14,7 +14,7 @@ export default function HomeRedirect() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        // User is logged in, go to dashboard
+        // User is logged in, go to home
         router.replace('/home');
       } else {
         // Always show onboarding for non-logged-in users

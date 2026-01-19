@@ -270,7 +270,7 @@ export default function NewDeliveryPage() {
             {/* Header */}
             <div className="bg-white border-b px-5 py-5 flex items-center">
                 <button
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => router.push('/home')}
                     className="mr-4 p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors"
                     style={{ minHeight: '48px', minWidth: '48px' }}
                     aria-label="Go back"

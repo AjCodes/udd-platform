@@ -281,10 +281,12 @@ export default function DeliveryDetailPage() {
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Sender</p>
                                     <p className="text-sm font-bold text-white">{delivery.sender_name || 'Anonymous'}</p>
+                                    <p className="text-xs text-gray-400 font-mono">{delivery.sender_phone || '---'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Receiver</p>
                                     <p className="text-sm font-bold text-white">{delivery.receiver_name || 'Anonymous'}</p>
+                                    <p className="text-xs text-gray-400 font-mono">{delivery.receiver_phone || '---'}</p>
                                 </div>
                             </div>
                         </div>

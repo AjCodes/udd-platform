@@ -8,6 +8,7 @@ import BottomNav from '@/components/BottomNav';
 interface UserProfile {
     email: string;
     full_name?: string;
+    phone?: string;
 }
 
 export default function ProfilePage() {
@@ -21,6 +22,10 @@ export default function ProfilePage() {
         promotions: false,
         news: false,
     });
+    const [isEditingPhone, setIsEditingPhone] = useState(false);
+    const [phoneValue, setPhoneValue] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -35,7 +40,7 @@ export default function ProfilePage() {
             // Try to get from users table first
             const { data: profile } = await supabase
                 .from('users')
-                .select('email, full_name')
+                .select('email, full_name, phone')
                 .eq('id', authUser.id)
                 .single();
 
@@ -47,7 +52,11 @@ export default function ProfilePage() {
             setUser({
                 email: profile?.email || authUser.email || '',
                 full_name: profile?.full_name || authName || null,
+                phone: profile?.phone || '',
             });
+            if (profile?.phone) {
+                setPhoneValue(profile.phone);
+            }
             setLoading(false);
         };
 
@@ -58,6 +67,38 @@ export default function ProfilePage() {
         const supabase = createBrowserClient();
         await supabase.auth.signOut();
         router.push('/login');
+    };
+
+    const handlePhoneUpdate = async () => {
+        // Simple Dutch phone validation: 10 digits starting with 0
+        const cleaned = phoneValue.replace(/\s/g, '');
+        const regex = /^(?:06[1-9][0-9]{7}|0[1-9][0-9]{8})$/;
+
+        if (!regex.test(cleaned)) {
+            setPhoneError('Please enter a valid 10-digit Dutch phone number');
+            return;
+        }
+
+        setSaving(true);
+        const supabase = createBrowserClient();
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+
+        if (authUser) {
+            const { error } = await supabase
+                .from('users')
+                .update({ phone: cleaned })
+                .eq('id', authUser.id);
+
+            if (error) {
+                alert('Failed to update phone number: ' + error.message);
+            } else {
+                setUser(prev => prev ? { ...prev, phone: cleaned } : null);
+                setPhoneValue(cleaned);
+                setIsEditingPhone(false);
+                setPhoneError('');
+            }
+        }
+        setSaving(false);
     };
 
     const handleProfilePictureUpload = () => {
@@ -113,7 +154,7 @@ export default function ProfilePage() {
             <div className="p-4 space-y-4">
                 {/* User info */}
                 <div className="card">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 mb-6">
                         <div className="relative">
                             <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--primary-light)' }}>
                                 <span className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
@@ -135,8 +176,66 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <p className="font-semibold text-lg">{displayName}</p>
-                            <p className="text-gray-500">{user?.email}</p>
+                            <p className="text-gray-500 text-sm">{user?.email}</p>
                         </div>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Phone Number</h3>
+                            {!isEditingPhone && (
+                                <button
+                                    onClick={() => setIsEditingPhone(true)}
+                                    className="text-xs font-bold text-teal-600 hover:text-teal-700"
+                                >
+                                    Edit
+                                </button>
+                            )}
+                        </div>
+
+                        {isEditingPhone ? (
+                            <div className="space-y-3">
+                                <input
+                                    type="tel"
+                                    value={phoneValue}
+                                    onChange={(e) => setPhoneValue(e.target.value)}
+                                    placeholder="e.g. 0612345678"
+                                    className={`w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition-all ${phoneError ? 'border-red-500 ring-red-100' : 'focus:ring-teal-100'
+                                        }`}
+                                />
+                                {phoneError && <p className="text-red-500 text-xs">{phoneError}</p>}
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setIsEditingPhone(false);
+                                            setPhoneValue(user?.phone || '');
+                                            setPhoneError('');
+                                        }}
+                                        className="flex-1 py-2 text-sm font-medium bg-gray-100 rounded-lg hover:bg-gray-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handlePhoneUpdate}
+                                        disabled={saving}
+                                        className="flex-1 py-2 text-sm font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50"
+                                    >
+                                        {saving ? 'Saving...' : 'Save'}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1.01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                </div>
+                                <p className="font-semibold text-gray-900">
+                                    {user?.phone || <span className="text-gray-400 font-normal">Not set (needed for receiving)</span>}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

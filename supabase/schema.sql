@@ -30,9 +30,14 @@ CREATE TABLE deliveries (
   pickup_lat DOUBLE PRECISION NOT NULL,
   pickup_lng DOUBLE PRECISION NOT NULL,
   pickup_address TEXT,
+  sender_name TEXT,
+  sender_phone TEXT,
   dropoff_lat DOUBLE PRECISION NOT NULL,
   dropoff_lng DOUBLE PRECISION NOT NULL,
   dropoff_address TEXT,
+  receiver_name TEXT,
+  receiver_phone TEXT,
+  receiver_accepted BOOLEAN DEFAULT NULL, -- NULL = pending, TRUE = accepted, FALSE = declined
   package_description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -70,9 +75,19 @@ CREATE POLICY "Operators can view drones" ON drones
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
   );
 
--- Customers see their own deliveries
+-- Customers see their own deliveries (sent or received)
 CREATE POLICY "Customers see own deliveries" ON deliveries
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.phone = deliveries.receiver_phone
+      AND deliveries.receiver_phone IS NOT NULL
+      AND deliveries.receiver_phone != ''
+    )
+  );
 
 -- Operators see pending and their claimed deliveries
 CREATE POLICY "Operators see available and claimed deliveries" ON deliveries
@@ -83,6 +98,17 @@ CREATE POLICY "Operators see available and claimed deliveries" ON deliveries
 
 CREATE POLICY "Customers can create deliveries" ON deliveries
   FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Customers can update own deliveries" ON deliveries
+  FOR UPDATE USING (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.phone = deliveries.receiver_phone
+    )
+  );
 
 CREATE POLICY "Operators can update claimed deliveries" ON deliveries
   FOR UPDATE USING (

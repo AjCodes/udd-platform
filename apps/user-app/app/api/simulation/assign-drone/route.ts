@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         }
 
         // 3. Update Drone: Set status to 'flying' (or 'returning' -> 'busy')
-        // We set to 'flying' to show activity on dashboard
+        // We set to 'flying' to show activity on home
         const { data: updatedDrone, error: droneUpdateError } = await supabase
             .from('drones')
             .update({ status: 'flying' })

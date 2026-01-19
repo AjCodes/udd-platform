@@ -16,7 +16,7 @@ export default function PaymentSuccessPage() {
             if (!sessionId) {
                 setStatus('error');
                 setMessage('Invalid payment session');
-                setTimeout(() => router.push('/dashboard'), 2000);
+                setTimeout(() => router.push('/home'), 2000);
                 return;
             }
 
@@ -52,7 +52,7 @@ export default function PaymentSuccessPage() {
                 setStatus('success');
                 setMessage('Delivery created! Redirecting...');
 
-                // Dispatch custom event to notify dashboard to refresh
+                // Dispatch custom event to notify home to refresh
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('delivery-created', {
                         detail: { deliveryId: data.deliveryId }
@@ -70,12 +70,12 @@ export default function PaymentSuccessPage() {
                 setStatus('error');
                 setMessage('Something went wrong. Please check your deliveries.');
 
-                // Still try to refresh dashboard in case delivery was created
+                // Still try to refresh home in case delivery was created
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('delivery-created'));
                 }
 
-                setTimeout(() => router.push('/dashboard'), 3000);
+                setTimeout(() => router.push('/home'), 3000);
             }
         };
 

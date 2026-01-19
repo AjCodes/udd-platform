@@ -9,7 +9,7 @@ import type { Delivery } from '@udd/shared';
 import BottomNav from '@/components/BottomNav';
 import DeliveryCard from '@/components/DeliveryCard';
 
-export default function DashboardPage() {
+export default function HomePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [user, setUser] = useState<{ email: string; full_name?: string } | null>(null);
@@ -36,7 +36,7 @@ export default function DashboardPage() {
             // Check auth
             const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
             if (authError || !authUser) {
-                console.error('[Dashboard] Auth error:', authError);
+                console.error('[Home] Auth error:', authError);
                 router.push('/login');
                 return;
             }
@@ -53,7 +53,7 @@ export default function DashboardPage() {
                 .single();
 
             if (profileError) {
-                console.warn('[Dashboard] Profile fetch error:', profileError);
+                console.warn('[Home] Profile fetch error:', profileError);
             }
 
             // Fallback to name from auth metadata (Google/Signup)
@@ -92,10 +92,10 @@ export default function DashboardPage() {
                             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                         );
 
-                    console.log('[Dashboard] Total deliveries from API:', allDeliveries.length);
-                    console.log('[Dashboard] User deliveries:', allDeliveries.filter(d => d.user_id === authUser.id).length);
-                    console.log('[Dashboard] Active deliveries (filtered):', activeDeliveries.length);
-                    console.log('[Dashboard] Delivery details:', activeDeliveries.map((d: Delivery) => ({
+                    console.log('[Home] Total deliveries from API:', allDeliveries.length);
+                    console.log('[Home] User deliveries:', allDeliveries.filter(d => d.user_id === authUser.id).length);
+                    console.log('[Home] Active deliveries (filtered):', activeDeliveries.length);
+                    console.log('[Home] Delivery details:', activeDeliveries.map((d: Delivery) => ({
                         id: d.id.slice(0, 8),
                         status: d.status,
                         created_at: d.created_at
@@ -104,7 +104,7 @@ export default function DashboardPage() {
                     setDeliveries(activeDeliveries);
                 } else {
                     const errorText = await deliveriesRes.text();
-                    console.error('[Dashboard] API fetch failed:', deliveriesRes.status, errorText);
+                    console.error('[Home] API fetch failed:', deliveriesRes.status, errorText);
                     // Fallback to direct query if API fails
                     const { data: deliveriesData, error: deliveriesError } = await supabase
                         .from('deliveries')
@@ -114,14 +114,14 @@ export default function DashboardPage() {
                         .order('created_at', { ascending: false });
 
                     if (deliveriesError) {
-                        console.error('[Dashboard] Fallback query error:', deliveriesError);
+                        console.error('[Home] Fallback query error:', deliveriesError);
                     } else {
-                        console.log('[Dashboard] Fallback loaded:', deliveriesData?.length || 0, 'deliveries');
+                        console.log('[Home] Fallback loaded:', deliveriesData?.length || 0, 'deliveries');
                         setDeliveries(deliveriesData || []);
                     }
                 }
             } catch (fetchError) {
-                console.error('[Dashboard] Fetch error:', fetchError);
+                console.error('[Home] Fetch error:', fetchError);
                 // Fallback to direct query
                 const { data: deliveriesData, error: deliveriesError } = await supabase
                     .from('deliveries')
@@ -137,7 +137,7 @@ export default function DashboardPage() {
 
             setLoading(false);
         } catch (error) {
-            console.error('[Dashboard] Load data error:', error);
+            console.error('[Home] Load data error:', error);
             setLoading(false);
         }
     }, [router, searchParams]);
@@ -170,7 +170,7 @@ export default function DashboardPage() {
             const userId = userIdRef.current;
 
             if (!userId) {
-                console.warn('[Dashboard] No userId available, skipping real-time subscription');
+                console.warn('[Home] No userId available, skipping real-time subscription');
                 // Still set up polling
                 interval = setInterval(() => {
                     loadData();
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 return;
             }
 
-            console.log('[Dashboard] Setting up real-time subscription for user:', userId);
+            console.log('[Home] Setting up real-time subscription for user:', userId);
 
             // Subscribe to real-time updates for deliveries
             subscription = supabase
@@ -190,16 +190,16 @@ export default function DashboardPage() {
                     table: 'deliveries',
                     filter: `user_id=eq.${userId}`
                 }, (payload: { eventType: string; new: { id: string } }) => {
-                    console.log('[Dashboard] Real-time update received:', payload.eventType, payload.new?.id);
+                    console.log('[Home] Real-time update received:', payload.eventType, payload.new?.id);
                     // Refetch deliveries when changes occur
                     loadData();
                 })
                 .subscribe((status) => {
-                    console.log('[Dashboard] Subscription status:', status);
+                    console.log('[Home] Subscription status:', status);
                     if (status === 'SUBSCRIBED') {
-                        console.log('[Dashboard] Successfully subscribed to real-time updates');
+                        console.log('[Home] Successfully subscribed to real-time updates');
                     } else if (status === 'CHANNEL_ERROR') {
-                        console.error('[Dashboard] Subscription error, falling back to polling');
+                        console.error('[Home] Subscription error, falling back to polling');
                     }
                 });
 
@@ -213,14 +213,14 @@ export default function DashboardPage() {
 
         // Refresh when window gains focus
         const handleFocus = () => {
-            console.log('[Dashboard] Window focused, refreshing data');
+            console.log('[Home] Window focused, refreshing data');
             loadData();
         };
         window.addEventListener('focus', handleFocus);
 
         // Listen for custom refresh event (from payment success)
         const handleRefresh = () => {
-            console.log('[Dashboard] Custom refresh event received');
+            console.log('[Home] Custom refresh event received');
             loadData();
         };
         window.addEventListener('delivery-created', handleRefresh);

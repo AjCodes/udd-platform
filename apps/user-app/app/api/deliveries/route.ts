@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
 
         console.log('[DeliveriesAPI] Fetching deliveries for user:', user.id);
 
-        // Use REST API to ensure consistency with operator dashboard
+        // Use REST API to ensure consistency with operator home
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

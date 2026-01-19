@@ -11,6 +11,9 @@ export default function HistoryPage() {
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+    const [typeFilter, setTypeFilter] = useState<'sent' | 'received' | 'all'>('all');
+    const [userPhone, setUserPhone] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
     useEffect(() => {
         const loadHistory = async () => {
@@ -22,11 +25,30 @@ export default function HistoryPage() {
                 return;
             }
 
-            const { data } = await supabase
+            setCurrentUserId(user.id);
+
+            // Get user profile to get phone
+            const { data: profile } = await supabase
+                .from('users')
+                .select('phone')
+                .eq('id', user.id)
+                .single();
+
+            setUserPhone(profile?.phone || null);
+
+            // Fetch deliveries where user is sender OR receiver
+            // Using or logic in Supabase query
+            let query = supabase
                 .from('deliveries')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
+                .select('*');
+
+            if (profile?.phone) {
+                query = query.or(`user_id.eq.${user.id},receiver_phone.eq.${profile.phone}`);
+            } else {
+                query = query.eq('user_id', user.id);
+            }
+
+            const { data } = await query.order('created_at', { ascending: false });
 
             setDeliveries(data || []);
             setLoading(false);
@@ -58,9 +80,22 @@ export default function HistoryPage() {
     };
 
     const filteredDeliveries = deliveries.filter(d => {
-        if (filter === 'all') return true;
-        if (filter === 'active') return ['pending', 'assigned', 'in_transit'].includes(d.status);
-        if (filter === 'completed') return ['delivered', 'cancelled'].includes(d.status);
+        // First filter by status (All, Active, Completed)
+        let matchesStatus = true;
+        if (filter === 'active') matchesStatus = ['pending', 'assigned', 'in_transit'].includes(d.status);
+        if (filter === 'completed') matchesStatus = ['delivered', 'cancelled'].includes(d.status);
+
+        if (!matchesStatus) return false;
+
+        // Then filter by type (Sent, Received)
+        if (typeFilter === 'all') return true;
+
+        const isSent = d.user_id === currentUserId;
+        const isReceived = d.receiver_phone === userPhone && userPhone !== null && userPhone !== '';
+
+        if (typeFilter === 'sent') return isSent;
+        if (typeFilter === 'received') return isReceived;
+
         return true;
     });
 
@@ -79,25 +114,43 @@ export default function HistoryPage() {
                 <h1 className="text-xl font-semibold mb-4">My Deliveries</h1>
 
                 {/* Filter tabs */}
-                <div className="flex gap-2">
-                    {(['all', 'active', 'completed'] as const).map((f) => (
+                <div className="flex flex-col gap-4">
+                    <div className="flex gap-2">
+                        {(['all', 'active', 'completed'] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === f
+                                    ? 'text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                style={filter === f ? { backgroundColor: 'var(--primary)' } : {}}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="bg-gray-100 p-1 rounded-2xl flex">
                         <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === f
-                                ? 'text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            style={filter === f ? { backgroundColor: 'var(--primary)' } : {}}
+                            onClick={() => setTypeFilter('all')}
+                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${typeFilter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
                         >
-                            {f.charAt(0).toUpperCase() + f.slice(1)}
-                            {f === 'active' && deliveries.filter(d => ['pending', 'assigned', 'in_transit'].includes(d.status)).length > 0 && (
-                                <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-white text-teal-600">
-                                    {deliveries.filter(d => ['pending', 'assigned', 'in_transit'].includes(d.status)).length}
-                                </span>
-                            )}
+                            All
                         </button>
-                    ))}
+                        <button
+                            onClick={() => setTypeFilter('sent')}
+                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${typeFilter === 'sent' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+                        >
+                            Sent
+                        </button>
+                        <button
+                            onClick={() => setTypeFilter('received')}
+                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${typeFilter === 'received' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+                        >
+                            Received
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -138,6 +191,13 @@ export default function HistoryPage() {
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex items-center gap-2">
                                             <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    {delivery.user_id === currentUserId ? (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tighter">Sent</span>
+                                                    ) : (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-100 uppercase tracking-tighter">Received</span>
+                                                    )}
+                                                </div>
                                                 <p className="font-semibold text-gray-900">
                                                     {delivery.pickup_address?.split(',')[0] || 'Pickup'}
                                                 </p>

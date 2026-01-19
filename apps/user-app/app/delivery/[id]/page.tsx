@@ -15,6 +15,10 @@ export default function DeliveryTrackingPage() {
     const [copied, setCopied] = useState(false);
     const [droneLocation, setDroneLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showMap, setShowMap] = useState(false);
+    const [userPhone, setUserPhone] = useState<string | null>(null);
+    const [receiverPin, setReceiverPin] = useState('');
+    const [pinLocked, setPinLocked] = useState(false);
+    const [unlocking, setUnlocking] = useState(false);
 
     useEffect(() => {
         const loadDelivery = async () => {
@@ -34,6 +38,17 @@ export default function DeliveryTrackingPage() {
 
             if (data) {
                 setDelivery(data);
+
+                // Fetch current user phone to check if receiver
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('phone')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile?.phone) {
+                    setUserPhone(profile.phone);
+                }
 
                 // Fetch live drone location if assigned
                 if (data.drone_id) {
@@ -93,7 +108,8 @@ export default function DeliveryTrackingPage() {
     const handleShare = async () => {
         if (!delivery) return;
 
-        const shareText = `🚁 UDD Delivery\n\nPIN: ${delivery.pin}\n\nFrom: ${delivery.pickup_address}\nTo: ${delivery.dropoff_address}\n\nUse this PIN to unlock the drone storage compartment.`;
+        const trackingUrl = `${window.location.origin}/delivery/${delivery.id}`;
+        const shareText = `🚁 UDD Delivery\n\nTrack & Accept here: ${trackingUrl}\n\nPIN: ${delivery.pin}\n\nFrom: ${delivery.pickup_address}\nTo: ${delivery.dropoff_address}\n\nUse this PIN to unlock the drone storage compartment.`;
 
         if (navigator.share) {
             try {
@@ -108,6 +124,71 @@ export default function DeliveryTrackingPage() {
             await navigator.clipboard.writeText(shareText);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handlePinInput = (digit: string) => {
+        if (receiverPin.length < 6) {
+            setReceiverPin(prev => prev + digit);
+        }
+    };
+
+    const handlePinDelete = () => {
+        setReceiverPin(prev => prev.slice(0, -1));
+    };
+
+    const handleAccept = async () => {
+        if (!delivery) return;
+        const supabase = createBrowserClient();
+        const { error } = await supabase
+            .from('deliveries')
+            .update({ receiver_accepted: true })
+            .eq('id', delivery.id);
+
+        if (!error) {
+            setDelivery(prev => prev ? { ...prev, receiver_accepted: true } : null);
+        }
+    };
+
+    const handleDecline = async () => {
+        if (!delivery) return;
+        const supabase = createBrowserClient();
+        const { error } = await supabase
+            .from('deliveries')
+            .update({
+                receiver_accepted: false,
+                status: 'cancelled'
+            })
+            .eq('id', delivery.id);
+
+        if (!error) {
+            setDelivery(prev => prev ? { ...prev, receiver_accepted: false, status: 'cancelled' } : null);
+        }
+    };
+
+    const verifyAndUnlock = async () => {
+        if (!delivery || receiverPin !== delivery.pin) {
+            setPinLocked(true);
+            setTimeout(() => {
+                setPinLocked(false);
+                setReceiverPin('');
+            }, 1000);
+            return;
+        }
+
+        setUnlocking(true);
+        const supabase = createBrowserClient();
+
+        const { error } = await supabase
+            .from('deliveries')
+            .update({ status: 'delivered', updated_at: new Date().toISOString() })
+            .eq('id', delivery.id);
+
+        if (!error) {
+            // Success! The update will trigger re-fetch and show Delivered state
+        } else {
+            alert('Unlock failed: ' + error.message);
+            setUnlocking(false);
         }
     };
 
@@ -132,6 +213,9 @@ export default function DeliveryTrackingPage() {
 
     const status = getStatusInfo();
 
+    const isReceiver = delivery?.receiver_phone === userPhone;
+    const showAcceptPrompt = isReceiver && delivery?.receiver_accepted === null && (delivery?.status === 'pending' || delivery?.status === 'assigned');
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)' }}>
@@ -149,8 +233,8 @@ export default function DeliveryTrackingPage() {
                 <div className="text-center">
                     <div className="text-6xl mb-4">🔍</div>
                     <p className="text-xl text-gray-500 mb-4">Delivery not found</p>
-                    <button onClick={() => router.push('/dashboard')} className="btn-primary">
-                        Go to Dashboard
+                    <button onClick={() => router.push('/home')} className="btn-primary">
+                        Go to Home
                     </button>
                 </div>
             </div>
@@ -159,6 +243,36 @@ export default function DeliveryTrackingPage() {
 
     return (
         <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
+            {/* Acceptance Prompt Overlay */}
+            {showAcceptPrompt && (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-10 duration-500">
+                        <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                        </div>
+                        <h2 className="text-3xl font-black text-center mb-2 tracking-tight">Receive Package?</h2>
+                        <p className="text-gray-500 text-center mb-8 text-lg">
+                            Do you want to receive this package from <span className="font-bold text-gray-900">{delivery.sender_phone || 'a sender'}</span>?
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={handleDecline}
+                                className="py-4 rounded-2xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors active:scale-[0.98]"
+                            >
+                                No, decline
+                            </button>
+                            <button
+                                onClick={handleAccept}
+                                className="py-4 rounded-2xl font-bold text-white bg-primary hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 active:scale-[0.98]"
+                            >
+                                Yes, accept
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <style jsx global>{`
                 @keyframes checkmark-draw {
                     0% {
@@ -269,7 +383,7 @@ export default function DeliveryTrackingPage() {
                             <div className="relative group">
                                 <div className="absolute -inset-4 bg-teal-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 <Image
-                                    src="/drone_icon_high_res.png"
+                                    src="/udd-logo-icon.png"
                                     alt="UDD Drone"
                                     width={192}
                                     height={192}
@@ -395,39 +509,111 @@ export default function DeliveryTrackingPage() {
                     </div>
                 </div>
 
-                {/* PIN Card */}
-                <div className="card" style={{ backgroundColor: 'var(--primary-light)', border: '2px solid var(--primary)' }}>
-                    <div className="text-center mb-4">
-                        <p className="text-sm font-medium mb-1" style={{ color: 'var(--primary)' }}>YOUR UNLOCK PIN</p>
-                        <p className="text-4xl font-bold font-mono tracking-[0.3em]" style={{ color: 'var(--primary-dark)' }}>
-                            {delivery.pin}
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleShare}
-                        className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
-                        style={{
-                            backgroundColor: copied ? 'var(--success)' : 'var(--primary)',
-                            color: 'white'
-                        }}
-                    >
-                        {copied ? (
-                            <>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Copied!
-                            </>
+                {/* Receiver PIN Entry or Sender PIN Info */}
+                {['pending', 'assigned', 'in_transit'].includes(delivery.status) && (
+                    <div className="card" style={{
+                        backgroundColor: pinLocked ? '#fee2e2' : 'var(--primary-light)',
+                        border: `2px solid ${pinLocked ? '#ef4444' : 'var(--primary)'}`
+                    }}>
+                        {delivery.receiver_phone === userPhone ? (
+                            <div className="flex flex-col items-center">
+                                <p className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-widest">Enter Compartment PIN</p>
+
+                                {/* PIN Dots */}
+                                <div className="flex gap-3 mb-8">
+                                    {[...Array(6)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className={`w-4 h-4 rounded-full border-2 transition-all ${i < receiverPin.length
+                                                ? 'bg-teal-600 border-teal-600'
+                                                : 'border-teal-200'
+                                                }`}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Pad */}
+                                <div className="grid grid-cols-3 gap-4 mb-6">
+                                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'delete'].map((key, i) => {
+                                        if (key === '') return <div key={i} />;
+                                        if (key === 'delete') {
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={handlePinDelete}
+                                                    className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center text-gray-400 active:scale-90 transition-transform"
+                                                >
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L21 12l-8.758-8.758a2 2 0 00-2.828 0L3 12z" />
+                                                    </svg>
+                                                </button>
+                                            );
+                                        }
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => handlePinInput(key)}
+                                                className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-xl font-bold text-gray-900 shadow-sm active:scale-90 transition-transform"
+                                            >
+                                                {key}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <button
+                                    onClick={verifyAndUnlock}
+                                    disabled={receiverPin.length < 6 || unlocking}
+                                    className="w-full py-4 bg-teal-600 text-white rounded-2xl font-bold shadow-lg shadow-teal-100 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {unlocking ? (
+                                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                                    ) : (
+                                        <>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2z" />
+                                            </svg>
+                                            Unlock Compartment
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         ) : (
-                            <>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                </svg>
-                                Share PIN with Receiver
-                            </>
+                            <div className="text-center">
+                                <div className="mb-4">
+                                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--primary)' }}>YOUR UNLOCK PIN</p>
+                                    <p className="text-4xl font-bold font-mono tracking-[0.3em]" style={{ color: 'var(--primary-dark)' }}>
+                                        {delivery.pin}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleShare}
+                                    className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+                                    style={{
+                                        backgroundColor: copied ? 'var(--success)' : 'var(--primary)',
+                                        color: 'white'
+                                    }}
+                                >
+                                    {copied ? (
+                                        <>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Copied!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                            </svg>
+                                            Share PIN with Receiver
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         )}
-                    </button>
-                </div>
+                    </div>
+                )}
 
             </div>
 

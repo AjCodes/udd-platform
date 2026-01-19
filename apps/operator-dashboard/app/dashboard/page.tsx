@@ -66,6 +66,8 @@ export default function DashboardPage() {
 
     const loadData = async () => {
         try {
+            let activeDeliveriesCount = deliveries.length;
+
             // Fetch deliveries through API (bypasses RLS)
             const deliveriesRes = await fetch('/api/deliveries', { cache: 'no-store' });
             if (deliveriesRes.ok) {
@@ -74,7 +76,8 @@ export default function DashboardPage() {
                 const activeDeliveries = allDeliveries.filter((d: Delivery) =>
                     ['pending', 'assigned', 'in_transit'].includes(d.status)
                 );
-                console.log('[Dashboard] Active deliveries:', activeDeliveries.length, 'out of', allDeliveries.length);
+                activeDeliveriesCount = activeDeliveries.length;
+                console.log('[Dashboard] Active deliveries:', activeDeliveriesCount, 'out of', allDeliveries.length);
                 setDeliveries(activeDeliveries);
             } else {
                 console.error('[Dashboard] Failed to fetch deliveries:', deliveriesRes.status, deliveriesRes.statusText);
@@ -95,6 +98,10 @@ export default function DashboardPage() {
                 const flyingCount = data.filter((d: Drone) => d.status === 'flying').length;
                 const idleCount = data.filter((d: Drone) => d.status === 'idle').length;
                 console.log('[Dashboard] Stats - Flying:', flyingCount, 'Idle:', idleCount, 'Total:', data.length);
+
+                if (flyingCount === 0 && activeDeliveriesCount > 0) {
+                    console.log('[Dashboard] ⚠️ WARNING: Have active deliveries but 0 flying drones. Check assignment logic.');
+                }
 
                 setDrones(data);
             } else {
@@ -218,7 +225,7 @@ export default function DashboardPage() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Live Delivery Feed */}
-                        <DeliveryQueue />
+                        <DeliveryQueue deliveries={deliveries} />
 
                         {/* Drone Status */}
                         <div className="bg-gray-800 rounded-xl border border-gray-700">

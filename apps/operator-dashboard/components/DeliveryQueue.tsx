@@ -1,93 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@udd/shared';
-import type { Delivery, Drone } from '@udd/shared';
+import type { Delivery } from '@udd/shared';
 import Link from 'next/link';
 
-export default function DeliveryQueue() {
-    const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-    const [loading, setLoading] = useState(true);
+interface DeliveryQueueProps {
+    deliveries: Delivery[];
+}
 
-    const supabase = createBrowserClient();
-
-    const fetchDeliveries = async () => {
-        try {
-            // Fetch through API (uses service role key, bypasses RLS)
-            const res = await fetch('/api/deliveries', { cache: 'no-store' });
-            if (res.ok) {
-                const data = await res.json();
-                console.log('[DeliveryQueue] Raw deliveries from API:', data.length);
-
-                // Filter to only show active deliveries (exclude delivered and cancelled)
-                const activeDeliveries = data.filter((d: Delivery) =>
-                    ['pending', 'assigned', 'in_transit'].includes(d.status)
-                ).slice(0, 10);
-
-                console.log('[DeliveryQueue] Active deliveries after filter:', activeDeliveries.length);
-                if (activeDeliveries.length > 0) {
-                    console.log('[DeliveryQueue] Showing deliveries:', activeDeliveries.map((d: any) => ({
-                        id: d.id.slice(0, 8),
-                        status: d.status,
-                        created_at: d.created_at
-                    })));
-                }
-
-                setDeliveries(activeDeliveries);
-            } else {
-                const errorText = await res.text();
-                console.error('[DeliveryQueue] Failed to fetch deliveries:', res.status, res.statusText, errorText);
-            }
-        } catch (error) {
-            console.error('[DeliveryQueue] Fetch error:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchDeliveries();
-
-        // Subscribe to changes - refetch from API when changes occur
-        const subscription = supabase
-            .channel('delivery-queue-updates')
-            // @ts-ignore
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'deliveries'
-            }, (payload: any) => {
-                console.log('[DeliveryQueue] Real-time update:', payload.eventType, payload.new?.id);
-                fetchDeliveries();
-            })
-            .subscribe((status) => {
-                console.log('[DeliveryQueue] Subscription status:', status);
-                if (status === 'SUBSCRIBED') {
-                    console.log('[DeliveryQueue] Successfully subscribed to real-time updates');
-                }
-            });
-
-        // Poll every 1 second as backup (real-time might not work without proper RLS)
-        const interval = setInterval(() => {
-            fetchDeliveries();
-        }, 1000);
-
-        // Refresh when window gains focus
-        const handleFocus = () => {
-            console.log('[DeliveryQueue] Window focused, refreshing');
-            fetchDeliveries();
-        };
-        window.addEventListener('focus', handleFocus);
-
-        return () => {
-            subscription.unsubscribe();
-            clearInterval(interval);
-            window.removeEventListener('focus', handleFocus);
-        };
-    }, []);
-
-    if (loading) return <div className="p-4 text-center text-zinc-400">Loading feed...</div>;
-
+export default function DeliveryQueue({ deliveries = [] }: DeliveryQueueProps) {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'pending': return 'bg-yellow-500/20 text-yellow-500';
@@ -136,7 +56,7 @@ export default function DeliveryQueue() {
                                     {getStatusLabel(delivery.status)}
                                 </span>
                                 <div className="text-xs text-gray-500">
-                                    {new Date(delivery.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(delivery.updated_at || delivery.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </div>
                             </div>
 
@@ -149,6 +69,11 @@ export default function DeliveryQueue() {
                                         <span>↓</span>
                                         {(delivery.dropoff_address || 'Unknown').split(',')[0]}
                                     </div>
+                                    {(delivery as any).drones?.name && (
+                                        <div className="text-[10px] mt-1 text-blue-400 flex items-center gap-1 font-medium bg-blue-500/10 px-1.5 py-0.5 rounded-md w-fit">
+                                            <span className="text-[8px]">🛸</span> {(delivery as any).drones.name}
+                                        </div>
+                                    )}
                                 </div>
                                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

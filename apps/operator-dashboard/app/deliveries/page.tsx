@@ -47,6 +47,14 @@ export default function DeliveriesPage() {
         }
     };
 
+    // Auto-switch tab if needed
+    useEffect(() => {
+        if (!loading && activeTab === 'pending' && deliveries.length === 0 && myDeliveries.length > 0) {
+            console.log('[DeliveriesPage] No pending deliveries, auto-switching to Active tab');
+            setActiveTab('active');
+        }
+    }, [deliveries.length, myDeliveries.length, loading, activeTab]);
+
     const claimDelivery = async (deliveryId: string) => {
         try {
             console.log('[DeliveriesPage] Claiming delivery:', deliveryId);
@@ -128,8 +136,8 @@ export default function DeliveriesPage() {
                     <button
                         onClick={() => setActiveTab('pending')}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'pending'
-                                ? 'bg-cyan-600 text-white'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                             }`}
                     >
                         Pending ({deliveries.length})
@@ -137,8 +145,8 @@ export default function DeliveriesPage() {
                     <button
                         onClick={() => setActiveTab('active')}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'active'
-                                ? 'bg-cyan-600 text-white'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                             }`}
                     >
                         My Active ({myDeliveries.length})
@@ -212,6 +220,12 @@ export default function DeliveriesPage() {
                                             {delivery.status.replace('_', ' ').charAt(0).toUpperCase() + delivery.status.replace('_', ' ').slice(1)}
                                         </span>
                                     </div>
+                                    {(delivery as any).drones?.name && (
+                                        <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm font-medium">
+                                            <span>🛸 Assigned Drone:</span>
+                                            <span className="text-white font-bold">{(delivery as any).drones.name}</span>
+                                        </div>
+                                    )}
                                     {delivery.package_description && (
                                         <p className="text-sm text-gray-400 mb-4">{delivery.package_description}</p>
                                     )}

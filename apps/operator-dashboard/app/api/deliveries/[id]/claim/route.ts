@@ -25,15 +25,42 @@ export async function POST(
             );
         }
 
-        // Get an available idle drone
-        const { data: drone, error: droneError } = await supabase
+        // Get an available drone (Prefer Drone-01 for simulation visibility)
+        const { data: preferredDrone } = await supabase
             .from('drones')
             .select('id, name')
-            .eq('status', 'idle')
-            .limit(1)
+            .eq('name', 'Drone-01')
             .single();
 
-        if (droneError || !drone) {
+        let drone;
+
+        // Check if preferred drone is truly idle
+        const { data: droneStatusData } = await supabase
+            .from('drones')
+            .select('status')
+            .eq('id', preferredDrone?.id)
+            .single();
+
+        if (preferredDrone && droneStatusData?.status === 'idle') {
+            drone = preferredDrone;
+        } else {
+            // Fallback: Get any idle drone
+            const { data: idleDrone, error: droneError } = await supabase
+                .from('drones')
+                .select('id, name')
+                .eq('status', 'idle')
+                .limit(1)
+                .single();
+
+            drone = idleDrone;
+
+            if (droneError || !drone) {
+                // Last resort: force assign Drone-01 if it exists
+                drone = preferredDrone;
+            }
+        }
+
+        if (!drone) {
             return NextResponse.json(
                 { error: 'No available drones' },
                 { status: 400 }
@@ -57,14 +84,17 @@ export async function POST(
         }
 
         // Update drone status to flying
-        const { error: droneUpdateError } = await supabase
+        const { data: updatedDrone, error: droneUpdateError } = await supabase
             .from('drones')
             .update({ status: 'flying' })
-            .eq('id', drone.id);
+            .eq('id', drone.id)
+            .select()
+            .single();
 
         if (droneUpdateError) {
             console.error('[Claim] Failed to update drone status:', droneUpdateError);
-            // Don't fail the request, but log the error
+        } else {
+            console.log('[Claim] Drone', updatedDrone.name, 'status updated to:', updatedDrone.status);
         }
 
         console.log('[Claim] ✅ Delivery', params.id.slice(0, 8), 'assigned to drone', drone.name);

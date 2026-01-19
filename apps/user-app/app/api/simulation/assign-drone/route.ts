@@ -18,26 +18,30 @@ export async function POST(request: Request) {
 
         console.log(`[Simulation] finding drone for delivery: ${deliveryId}`);
 
-        // 1. Find an idle drone (or just pick the first one if none idle, to force it)
-        const { data: drones, error: _droneError } = await supabase
+        // 1. Find an idle drone (Prefer Drone-01 for simulation visibility)
+        const { data: preferredDrone } = await supabase
             .from('drones')
             .select('*')
-            .eq('status', 'idle')
-            .limit(1);
+            .eq('name', 'Drone-01')
+            .single();
 
         let selectedDrone;
 
-        if (drones && drones.length > 0) {
-            selectedDrone = drones[0];
+        if (preferredDrone && preferredDrone.status === 'idle') {
+            selectedDrone = preferredDrone;
         } else {
-            // Fallback: Pick ANY drone if none are idle (force assignment for demo)
-            const { data: allDrones } = await supabase
+            // Fallback: Find any idle drone
+            const { data: idleDrones } = await supabase
                 .from('drones')
                 .select('*')
+                .eq('status', 'idle')
                 .limit(1);
 
-            if (allDrones && allDrones.length > 0) {
-                selectedDrone = allDrones[0];
+            if (idleDrones && idleDrones.length > 0) {
+                selectedDrone = idleDrones[0];
+            } else if (preferredDrone) {
+                // Last resort: just use Drone-01 even if not idle (force it for demo)
+                selectedDrone = preferredDrone;
             }
         }
 
@@ -62,15 +66,24 @@ export async function POST(request: Request) {
 
         // 3. Update Drone: Set status to 'flying' (or 'returning' -> 'busy')
         // We set to 'flying' to show activity on dashboard
-        await supabase
+        const { data: updatedDrone, error: droneUpdateError } = await supabase
             .from('drones')
             .update({ status: 'flying' })
-            .eq('id', selectedDrone.id);
+            .eq('id', selectedDrone.id)
+            .select()
+            .single();
+
+        if (droneUpdateError) {
+            console.error('[Simulation] Drone update error:', droneUpdateError);
+            throw droneUpdateError;
+        }
+
+        console.log(`[Simulation] Drone ${updatedDrone.name} status updated to: ${updatedDrone.status}`);
 
         return NextResponse.json({
             success: true,
-            drone: selectedDrone.name,
-            message: 'Drone assigned successfully'
+            drone: updatedDrone.name,
+            message: 'Drone assigned and status updated successfully'
         });
 
     } catch (err: unknown) {

@@ -106,23 +106,25 @@ CREATE POLICY "Operators can view drones" ON drones
 CREATE POLICY "Customers see own deliveries" ON deliveries
   FOR SELECT USING (auth.uid() = user_id);
 
--- Operators see all active deliveries
-CREATE POLICY "Operators see all deliveries" ON deliveries
+-- Operators see pending and their claimed deliveries
+CREATE POLICY "Operators see available and claimed deliveries" ON deliveries
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
+    AND (status = 'pending' OR operator_id = auth.uid())
   );
 
 CREATE POLICY "Customers can create deliveries" ON deliveries
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Operators can update all deliveries" ON deliveries
+CREATE POLICY "Operators can update claimed deliveries" ON deliveries
   FOR UPDATE USING (
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'operator')
+    AND (status = 'pending' OR operator_id = auth.uid())
   );
 
--- Customers can update their own deliveries (for unlock)
-CREATE POLICY "Customers can update own deliveries" ON deliveries
-  FOR UPDATE USING (auth.uid() = user_id);
+-- Allow anonymous users to view pending deliveries for dashboard real-time updates
+CREATE POLICY "Anon can view pending deliveries" ON deliveries
+  FOR SELECT USING (auth.uid() IS NULL AND status = 'pending');
 
 -- Operators can view telemetry
 CREATE POLICY "Operators can view telemetry" ON telemetry

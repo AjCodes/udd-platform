@@ -90,6 +90,10 @@ CREATE POLICY "Operators can update claimed deliveries" ON deliveries
     AND (status = 'pending' OR operator_id = auth.uid())
   );
 
+-- Allow anonymous users to view pending deliveries for dashboard real-time updates
+CREATE POLICY "Anon can view pending deliveries" ON deliveries
+  FOR SELECT USING (auth.uid() IS NULL AND status = 'pending');
+
 -- Operators can view telemetry
 CREATE POLICY "Operators can view telemetry" ON telemetry
   FOR SELECT USING (

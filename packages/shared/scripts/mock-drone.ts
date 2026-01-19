@@ -9,6 +9,7 @@ import mqtt from 'mqtt';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createServerClient } from '../src/supabase.ts';
 
 // ES module compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +18,7 @@ const __dirname = path.dirname(__filename);
 // Load env from root
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
-const DRONE_ID = 'drone-001';
+const DRONE_ID = 'drone-01';
 
 const config = {
     brokerUrl: process.env.MQTT_BROKER_URL || '',
@@ -51,36 +52,25 @@ let droneState = {
     speed: 0,
 };
 
-import { createClient } from '@supabase/supabase-js';
-
 async function resetFleet() {
-    console.log('🔄 Performing System Reset...');
+    console.log('🔄 Checking System State...');
     try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabase = createServerClient();
 
-        if (!supabaseUrl || !supabaseKey) {
-            console.error('❌ Missing Supabase Env Variables!');
+        // Check if we already have drones
+        const { count } = await supabase.from('drones').select('*', { count: 'exact', head: true });
+
+        if (count && count > 0) {
+            console.log(`  ✅ Database already has ${count} drones. Skipping reset.`);
             return;
         }
 
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
-        console.log('  ⚠️ FORCE RESETTING DATABASE TO CLEAN STATE');
-
-        // 1. Delete ALL deliveries
-        await supabase.from('deliveries').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        // 2. Delete ALL telemetry
-        await supabase.from('telemetry').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        // 3. Delete ALL drones
-        await supabase.from('drones').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-        console.log('  ✅ Database cleared. Reseeding 20 fresh drones...');
+        console.log('  ⚠️ SEEDING DATABASE WITH FRESH DRONES');
 
         const drones = [];
-        // Drone 1 is 001
+        // Drone 1 is 01
         drones.push({
-            name: 'Drone-001',
+            name: 'Drone-01',
             status: 'idle',
             battery_level: 100,
             current_lat: 51.4416,
@@ -139,133 +129,116 @@ client.on('connect', async () => {
         if (!err) console.log('Listening for commands on:', commandTopic);
     });
 
-    // Send telemetry every 1 second
+    const supabase = createServerClient();
+
+    // Send telemetry for ALL drones every 1 second
     setInterval(async () => {
-        // --- 1. GAME LOOP: Determine Target & Move ---
-        let targetLat = droneState.lat;
-        let targetLng = droneState.lng;
-        let missionPhase = 'idle';
-        let activeDeliveryId = null;
-
         try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-            if (supabaseUrl && supabaseKey) {
-                const supabase = createClient(supabaseUrl, supabaseKey);
+            // 1. Fetch all drones
+            const { data: drones, error: dronesError } = await supabase
+                .from('drones')
+                .select('*')
+                .order('name', { ascending: true });
 
-                // 0. Get Drone ID for 'Drone-001'
-                const { data: droneData } = await supabase
-                    .from('drones')
-                    .select('id')
-                    .eq('name', 'Drone-001')
-                    .single();
+            if (dronesError || !drones) return;
 
-                if (droneData) {
-                    // Find active mission SPECIFICALLY for this drone
-                    const { data: activeDelivery } = await supabase
-                        .from('deliveries')
-                        .select('*')
-                        .eq('drone_id', droneData.id)
-                        .in('status', ['assigned', 'in_transit'])
-                        .limit(1)
-                        .single();
+            // 2. Fetch all active deliveries
+            const { data: activeDeliveries } = await supabase
+                .from('deliveries')
+                .select('*')
+                .in('status', ['assigned', 'in_transit']);
 
-                    if (activeDelivery) {
-                        activeDeliveryId = activeDelivery.id;
-                        if (activeDelivery.status === 'assigned') {
-                            // Phase 1: Fly to Pickup
-                            targetLat = activeDelivery.pickup_lat;
-                            targetLng = activeDelivery.pickup_lng;
-                            missionPhase = 'pickup';
-                        } else if (activeDelivery.status === 'in_transit') {
-                            // Phase 2: Fly to Dropoff
-                            targetLat = activeDelivery.dropoff_lat;
-                            targetLng = activeDelivery.dropoff_lng;
-                            missionPhase = 'dropoff';
-                        }
+            // 3. Process each drone
+            for (const drone of drones) {
+                let targetLat = drone.current_lat;
+                let targetLng = drone.current_lng;
+                let missionPhase = 'idle';
+                let activeDeliveryId = null;
+
+                // Find if this drone has an active delivery
+                const activeDelivery = activeDeliveries?.find(d => d.drone_id === drone.id);
+
+                if (activeDelivery) {
+                    activeDeliveryId = activeDelivery.id;
+                    if (activeDelivery.status === 'assigned') {
+                        targetLat = activeDelivery.pickup_lat;
+                        targetLng = activeDelivery.pickup_lng;
+                        missionPhase = 'pickup';
+                    } else if (activeDelivery.status === 'in_transit') {
+                        targetLat = activeDelivery.dropoff_lat;
+                        targetLng = activeDelivery.dropoff_lng;
+                        missionPhase = 'dropoff';
                     }
                 }
 
-                // --- 2. Move Drone Towards Target ---
+                // Physics update
+                let newLat = drone.current_lat || 51.4416;
+                let newLng = drone.current_lng || 5.4697;
+                let newHeading = drone.heading || 0;
+                let newBattery = Math.max(0, (drone.battery_level || 100) - 0.0025);
+                let speed = 0;
+
                 if (missionPhase !== 'idle') {
-                    const speedFactor = 0.0001; // Adjusted for 500ms interval (smoother)
-                    const dLat = targetLat - droneState.lat;
-                    const dLng = targetLng - droneState.lng;
+                    const speedFactor = 0.0001;
+                    const dLat = targetLat - newLat;
+                    const dLng = targetLng - newLng;
                     const dist = Math.sqrt(dLat * dLat + dLng * dLng);
 
-                    if (dist > 0.0001) { // Threshold
-                        droneState.lat += (dLat / dist) * speedFactor;
-                        droneState.lng += (dLng / dist) * speedFactor;
-                        droneState.speed = 15; // 15 m/s
-
-                        // Calculate Heading
-                        droneState.heading = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+                    if (dist > 0.0001) {
+                        newLat += (dLat / dist) * speedFactor;
+                        newLng += (dLng / dist) * speedFactor;
+                        speed = 15;
+                        newHeading = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
                     } else {
-                        // Arrived at waypoint
-                        droneState.speed = 0;
-
-                        // Handle State Transitions
+                        // Arrived
                         if (missionPhase === 'pickup') {
-                            console.log(`[Simulation] Arrived at Pickup. Updating delivery ${activeDeliveryId} -> in_transit`);
-                            await supabase
-                                .from('deliveries')
-                                .update({ status: 'in_transit' })
-                                .eq('id', activeDeliveryId);
+                            await supabase.from('deliveries').update({ status: 'in_transit' }).eq('id', activeDeliveryId);
                         } else if (missionPhase === 'dropoff') {
-                            console.log(`[Simulation] Arrived at Dropoff. Updating delivery ${activeDeliveryId} -> delivered`);
-                            await supabase
-                                .from('deliveries')
-                                .update({ status: 'delivered' })
-                                .eq('id', activeDeliveryId);
-                            // Also set drone to idle
-                            await supabase
-                                .from('drones')
-                                .update({ status: 'idle' })
-                                .eq('name', 'Drone-001');
+                            await supabase.from('deliveries').update({ status: 'delivered' }).eq('id', activeDeliveryId);
+                            missionPhase = 'idle';
                         }
                     }
-                    droneState.alt = 60; // Cruise altitude
                 } else {
-                    updatePosition(); // Random idle movement
+                    // Idle jitter
+                    newLat += (Math.random() - 0.5) * 0.00005;
+                    newLng += (Math.random() - 0.5) * 0.00005;
+                    newHeading = (newHeading + (Math.random() - 0.3) * 5) % 360;
                 }
 
-                // Sync drone state to DB
-                await supabase
-                    .from('drones')
-                    .update({
-                        current_lat: droneState.lat,
-                        current_lng: droneState.lng,
-                        heading: droneState.heading,
-                        status: missionPhase === 'idle' ? 'idle' : 'flying'
-                    })
-                    .eq('name', 'Drone-001');
+                // Update DB (Debounced: only every few ticks or just do it for active ones)
+                // For simplicity in this demo, we update all flying ones every tick
+                if (missionPhase !== 'idle' || Math.random() > 0.9) {
+                    await supabase.from('drones').update({
+                        current_lat: newLat,
+                        current_lng: newLng,
+                        heading: newHeading,
+                        status: missionPhase === 'idle' ? 'idle' : 'flying',
+                        battery_level: newBattery
+                    }).eq('id', drone.id);
+                }
+
+                // Publish telemetry for Drone-01 (or all if needed, but keep it light)
+                if (drone.name === 'Drone-01') {
+                    const telemetry = {
+                        lat: newLat,
+                        lng: newLng,
+                        alt: missionPhase === 'idle' ? 0 : 60,
+                        heading: Math.round(newHeading),
+                        battery: Math.round(newBattery),
+                        speed: parseFloat(speed.toFixed(2)),
+                        ts: Date.now(),
+                    };
+                    client.publish(`drone/${drone.id}/telemetry`, JSON.stringify(telemetry), { qos: 0 });
+                    if (missionPhase !== 'idle') {
+                        console.log(`[Simulation] ${drone.name} | Phase: ${missionPhase} | Lat: ${newLat.toFixed(5)}, Lng: ${newLng.toFixed(5)}`);
+                    }
+                }
             }
         } catch (e) {
-            // Squelch errors
+            console.error('[Simulation] Loop error:', e);
         }
-
-        // Battery drain
-        droneState.battery = Math.max(0, droneState.battery - 0.0025);
-
-        // --- 3. Publish Telemetry ---
-        const telemetry = {
-            lat: droneState.lat,
-            lng: droneState.lng,
-            alt: droneState.alt,
-            heading: Math.round(droneState.heading),
-            battery: Math.round(droneState.battery),
-            speed: parseFloat(droneState.speed.toFixed(2)),
-            ts: Date.now(),
-        };
-
-        client.publish(`drone/${DRONE_ID}/telemetry`, JSON.stringify(telemetry), { qos: 0 });
-
-        console.log(
-            `Phase: ${missionPhase} | Lat: ${telemetry.lat.toFixed(5)}, Lng: ${telemetry.lng.toFixed(5)} | ` +
-            `Hdg: ${telemetry.heading}° | Bat: ${telemetry.battery}%`
-        );
-    }, 500);
+    }, 1000);
 });
 
 // Handle commands

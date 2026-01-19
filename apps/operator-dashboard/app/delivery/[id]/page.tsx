@@ -144,14 +144,59 @@ export default function DeliveryDetailPage() {
             <div className="p-6 max-w-5xl mx-auto space-y-6">
                 {/* Delivered State High Fidelity Banner (Conditional) */}
                 {delivery.status === 'delivered' && (
-                    <div className="bg-white rounded-3xl p-10 border border-gray-200 shadow-2xl flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-700">
-                        <div className="w-24 h-24 bg-green-500 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200 mb-6 scale-110">
-                            <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                            </svg>
+                    <div className="relative overflow-hidden bg-gray-800/40 backdrop-blur-xl rounded-[2.5rem] p-12 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-1000">
+                        <style jsx>{`
+                            @keyframes checkmark-draw {
+                                0% { stroke-dashoffset: 100; opacity: 0; }
+                                10% { opacity: 1; }
+                                100% { stroke-dashoffset: 0; opacity: 1; }
+                            }
+                            .animate-checkmark {
+                                stroke-dasharray: 100;
+                                stroke-dashoffset: 100;
+                                animation: checkmark-draw 1.2s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+                                animation-delay: 0.2s;
+                            }
+                        `}</style>
+
+                        {/* Background Mesh Gradients */}
+                        <div className="absolute inset-0 -z-10 overflow-hidden">
+                            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse" />
+                            <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-cyan-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
                         </div>
-                        <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Delivered!</h2>
-                        <p className="text-xl text-gray-500 font-medium">Package delivered safely</p>
+
+                        <div className="relative mb-8">
+                            {/* Outer Glows */}
+                            <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-2xl animate-pulse" />
+
+                            <div className="relative w-32 h-32 bg-gray-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl flex items-center justify-center overflow-hidden group">
+                                {/* Inner Gradient Polish */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+
+                                {/* Animated SVG Checkmark */}
+                                <svg viewBox="0 0 100 100" className="w-20 h-20 text-emerald-400 relative z-10 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]">
+                                    <path
+                                        d="M25 50 L45 70 L75 30"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="10"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="animate-checkmark"
+                                    />
+                                </svg>
+
+                                {/* Success Glow Base */}
+                                <div className="absolute inset-0 bg-emerald-500/5" />
+                            </div>
+                        </div>
+
+                        <h2 className="text-5xl font-black text-white mb-3 tracking-tight bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent">
+                            Delivered!
+                        </h2>
+                        <p className="text-xl text-gray-400 font-medium tracking-wide">
+                            Package reached its destination successfully
+                        </p>
                     </div>
                 )}
 

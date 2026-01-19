@@ -175,6 +175,59 @@ export default function DeliveryTrackingPage() {
 
     return (
         <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
+            <style jsx global>{`
+                @keyframes checkmark-draw {
+                    0% {
+                        stroke-dasharray: 100;
+                        stroke-dashoffset: 100;
+                        opacity: 0;
+                    }
+                    10% {
+                        opacity: 1;
+                    }
+                    100% {
+                        stroke-dasharray: 100;
+                        stroke-dashoffset: 0;
+                        opacity: 1;
+                    }
+                }
+
+                .animate-checkmark-draw {
+                    animation: checkmark-draw 1.2s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+                }
+
+                @keyframes pulse-float {
+                    0%, 100% {
+                        transform: translateY(0) scale(1.02);
+                    }
+                    50% {
+                        transform: translateY(-8px) scale(1.05);
+                    }
+                }
+
+                .animate-pulse-float {
+                    animation: pulse-float 4s ease-in-out infinite;
+                }
+
+                @keyframes spin-slow {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+
+                .animate-spin-slow {
+                    animation: spin-slow 10s linear infinite;
+                }
+
+                @keyframes reverse-spin-slow {
+                    from { transform: rotate(360deg); }
+                    to { transform: rotate(0deg); }
+                }
+
+                .animate-reverse-spin-slow {
+                    animation: reverse-spin-slow 7s linear infinite;
+                }
+            `}</style>
+
             {/* Header */}
             <div className="bg-white border-b px-5 py-5 flex items-center justify-between">
                 <div className="flex items-center">
@@ -200,24 +253,56 @@ export default function DeliveryTrackingPage() {
             <div className="p-5 flex-1 space-y-5">
                 {/* Status Card */}
                 <div className="card text-center py-8">
-                    <div className={`mb-2 flex justify-center ${status.animate ? 'animate-pulse-float' : ''}`}>
+                    <div className={`mb-6 flex justify-center relative ${status.animate ? 'animate-pulse-float' : ''}`}>
                         {delivery.status === 'delivered' ? (
-                            <span className="text-6xl">✅</span>
+                            <div className="relative w-48 h-48 flex items-center justify-center">
+                                {/* Animated Mesh Gradient Circle */}
+                                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-400 via-teal-500 to-cyan-400 rounded-full animate-[spin_10s_linear_infinite] opacity-20 blur-2xl"></div>
+                                <div className="absolute inset-4 bg-gradient-to-bl from-emerald-500 via-teal-600 to-cyan-500 rounded-full animate-[spin_7s_linear_infinite_reverse] opacity-30 blur-xl"></div>
+
+                                <div className="relative w-32 h-32 bg-white rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden group">
+                                    {/* Glassmorphism Inner Glow */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none"></div>
+
+                                    {/* Animated SVG Checkmark */}
+                                    <svg viewBox="0 0 100 100" className="w-20 h-20 text-emerald-500 relative z-10 drop-shadow-md">
+                                        <path
+                                            d="M25 50 L45 70 L75 30"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="10"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            className="animate-checkmark-draw"
+                                        />
+                                    </svg>
+
+                                    {/* Success Glow */}
+                                    <div className="absolute inset-0 bg-emerald-500/10 animate-pulse"></div>
+                                </div>
+                            </div>
                         ) : (
-                            <Image
-                                src="/drone_icon_high_res.png"
-                                alt="UDD Drone"
-                                width={192}
-                                height={192}
-                                className="w-48 h-48 object-contain mix-blend-multiply"
-                                style={{
-                                    filter: 'contrast(1.1)',
-                                }}
-                            />
+                            <div className="relative group">
+                                <div className="absolute -inset-4 bg-teal-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <Image
+                                    src="/drone_icon_high_res.png"
+                                    alt="UDD Drone"
+                                    width={192}
+                                    height={192}
+                                    className="w-48 h-48 object-contain mix-blend-multiply relative z-10 scale-110"
+                                    style={{
+                                        filter: 'contrast(1.1)',
+                                    }}
+                                />
+                            </div>
                         )}
                     </div>
-                    <h2 className="text-2xl font-bold mb-2">{status.title}</h2>
-                    <p className="text-gray-500 text-lg">{status.subtitle}</p>
+                    <h2 className={`text-3xl font-black mb-2 tracking-tight ${delivery.status === 'delivered' ? 'text-emerald-600 animate-[fade-in_1s_ease-out]' : ''}`}>
+                        {status.title}
+                    </h2>
+                    <p className={`text-lg transition-colors duration-1000 ${delivery.status === 'delivered' ? 'text-emerald-500 font-medium' : 'text-gray-500'}`}>
+                        {status.subtitle}
+                    </p>
 
                     {/* ETA Badge */}
                     {(delivery.status === 'in_transit' || delivery.status === 'assigned') && (

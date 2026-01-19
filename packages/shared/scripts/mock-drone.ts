@@ -1,8 +1,8 @@
 /**
  * Mock Drone Simulator
  * 
- * Simulates a drone sending telemetry to HiveMQ for testing.
- * Run with: npx ts-node scripts/mock-drone.ts
+ * Simulates 20 drones sending telemetry to HiveMQ for testing.
+ * Runs an autonomous loop that handles active deliveries and responds to manual commands.
  */
 
 import mqtt from 'mqtt';
@@ -17,8 +17,6 @@ const __dirname = path.dirname(__filename);
 
 // Load env from root
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-
-const DRONE_ID = 'drone-01';
 
 const config = {
     brokerUrl: process.env.MQTT_BROKER_URL || '',
@@ -42,15 +40,8 @@ const client = mqtt.connect(url, {
     protocol: 'mqtts',
 });
 
-// Simulated drone state
-let droneState = {
-    lat: 51.4416,
-    lng: 5.4697,
-    alt: 0,
-    heading: 0,
-    battery: 100,
-    speed: 0,
-};
+// Cache for altitude and other simulated-only state
+const droneExtraState: Record<string, { alt: number; targetLat?: number; targetLng?: number }> = {};
 
 async function resetFleet() {
     console.log('🔄 Checking System State...');
@@ -68,17 +59,7 @@ async function resetFleet() {
         console.log('  ⚠️ SEEDING DATABASE WITH FRESH DRONES');
 
         const drones = [];
-        // Drone 1 is 01
-        drones.push({
-            name: 'Drone-01',
-            status: 'idle',
-            battery_level: 100,
-            current_lat: 51.4416,
-            current_lng: 5.4697,
-        });
-
-        // Drones 2-20
-        for (let i = 2; i <= 20; i++) {
+        for (let i = 1; i <= 20; i++) {
             const num = i.toString().padStart(2, '0');
             drones.push({
                 name: `Drone-${num}`,
@@ -98,43 +79,24 @@ async function resetFleet() {
     }
 }
 
-function updatePosition() {
-    droneState.lat += (Math.random() - 0.5) * 0.0001;
-    droneState.lng += (Math.random() - 0.5) * 0.0001;
-
-    if (droneState.alt < 50) {
-        droneState.alt += Math.random() * 2;
-    }
-
-    // Update heading (0-360 degrees, slowly rotating)
-    droneState.heading = (droneState.heading + (Math.random() - 0.3) * 10) % 360;
-    if (droneState.heading < 0) droneState.heading += 360;
-
-    droneState.battery = Math.max(0, droneState.battery - 0.01);
-    droneState.speed = Math.random() * 5 + 2;
-}
-
 client.on('connect', async () => {
     console.log('Connected to MQTT broker');
 
     // Reset DB on startup
     await resetFleet();
 
-    console.log('Publishing to: drone/' + DRONE_ID + '/telemetry');
-    console.log('Press Ctrl+C to stop\n');
-
-    // Subscribe to commands
-    const commandTopic = `drone/${DRONE_ID}/command`;
-    client.subscribe(commandTopic, (err) => {
-        if (!err) console.log('Listening for commands on:', commandTopic);
+    // Subscribe to ALL drone command topics
+    client.subscribe('drone/+/command', (err) => {
+        if (!err) console.log('Listening for commands on: drone/+/command');
     });
 
     const supabase = createServerClient();
+    const HOME_LAT = 51.4416;
+    const HOME_LNG = 5.4697;
 
-    // Send telemetry for ALL drones every 1 second
+    // Simulation loop
     setInterval(async () => {
         try {
-
             // 1. Fetch all drones
             const { data: drones, error: dronesError } = await supabase
                 .from('drones')
@@ -151,35 +113,57 @@ client.on('connect', async () => {
 
             // 3. Process each drone
             for (const drone of drones) {
+                if (!droneExtraState[drone.id]) {
+                    droneExtraState[drone.id] = { alt: drone.status === 'idle' ? 0 : 60 };
+                }
+
+                const state = droneExtraState[drone.id];
                 let targetLat = drone.current_lat;
                 let targetLng = drone.current_lng;
                 let missionPhase = 'idle';
                 let activeDeliveryId = null;
 
-                // Find if this drone has an active delivery
-                const activeDelivery = activeDeliveries?.find(d => d.drone_id === drone.id);
-
-                if (activeDelivery) {
-                    activeDeliveryId = activeDelivery.id;
-                    if (activeDelivery.status === 'assigned') {
-                        targetLat = activeDelivery.pickup_lat;
-                        targetLng = activeDelivery.pickup_lng;
-                        missionPhase = 'pickup';
-                    } else if (activeDelivery.status === 'in_transit') {
-                        targetLat = activeDelivery.dropoff_lat;
-                        targetLng = activeDelivery.dropoff_lng;
-                        missionPhase = 'dropoff';
+                // Priority 1: Manual Commands (Returning)
+                if (drone.status === 'returning') {
+                    targetLat = HOME_LAT;
+                    targetLng = HOME_LNG;
+                    missionPhase = 'returning';
+                }
+                // Priority 2: Active Deliveries
+                else {
+                    const activeDelivery = activeDeliveries?.find(d => d.drone_id === drone.id);
+                    if (activeDelivery) {
+                        activeDeliveryId = activeDelivery.id;
+                        if (activeDelivery.status === 'assigned') {
+                            targetLat = activeDelivery.pickup_lat;
+                            targetLng = activeDelivery.pickup_lng;
+                            missionPhase = 'pickup';
+                        } else if (activeDelivery.status === 'in_transit') {
+                            targetLat = activeDelivery.dropoff_lat;
+                            targetLng = activeDelivery.dropoff_lng;
+                            missionPhase = 'dropoff';
+                        }
+                    } else if (drone.status === 'flying') {
+                        // Flying but no delivery? Just hover or go back home automatically
+                        missionPhase = 'hover';
                     }
                 }
 
                 // Physics update
-                let newLat = drone.current_lat || 51.4416;
-                let newLng = drone.current_lng || 5.4697;
+                let newLat = drone.current_lat || HOME_LAT;
+                let newLng = drone.current_lng || HOME_LNG;
                 let newHeading = drone.heading || 0;
                 let newBattery = Math.max(0, (drone.battery_level || 100) - 0.0025);
                 let speed = 0;
 
-                if (missionPhase !== 'idle') {
+                // Altitude control
+                if (drone.status === 'idle') {
+                    state.alt = Math.max(0, state.alt - 5);
+                } else {
+                    state.alt = Math.min(60, state.alt + 2);
+                }
+
+                if (missionPhase !== 'idle' && missionPhase !== 'hover' && state.alt > 10) {
                     const speedFactor = 0.0001;
                     const dLat = targetLat - newLat;
                     const dLng = targetLng - newLng;
@@ -196,44 +180,39 @@ client.on('connect', async () => {
                             await supabase.from('deliveries').update({ status: 'in_transit' }).eq('id', activeDeliveryId);
                         } else if (missionPhase === 'dropoff') {
                             await supabase.from('deliveries').update({ status: 'delivered' }).eq('id', activeDeliveryId);
-                            missionPhase = 'idle';
+                        } else if (missionPhase === 'returning') {
+                            await supabase.from('drones').update({ status: 'idle' }).eq('id', drone.id);
                         }
                     }
-                } else {
-                    // Idle jitter
-                    newLat += (Math.random() - 0.5) * 0.00005;
-                    newLng += (Math.random() - 0.5) * 0.00005;
-                    newHeading = (newHeading + (Math.random() - 0.3) * 5) % 360;
+                } else if (missionPhase === 'idle' || missionPhase === 'hover') {
+                    // Jitter
+                    newLat += (Math.random() - 0.5) * 0.00002;
+                    newLng += (Math.random() - 0.5) * 0.00002;
+                    newHeading = (newHeading + (Math.random() - 0.5) * 2) % 360;
                 }
 
-                // Update DB (Debounced: only every few ticks or just do it for active ones)
-                // For simplicity in this demo, we update all flying ones every tick
-                if (missionPhase !== 'idle' || Math.random() > 0.9) {
+                // Update DB (Every few seconds for idle, every tick for flying)
+                if (drone.status !== 'idle' || Math.random() > 0.9) {
                     await supabase.from('drones').update({
                         current_lat: newLat,
                         current_lng: newLng,
                         heading: newHeading,
-                        status: missionPhase === 'idle' ? 'idle' : 'flying',
                         battery_level: newBattery
                     }).eq('id', drone.id);
                 }
 
-                // Publish telemetry for Drone-01 (or all if needed, but keep it light)
-                if (drone.name === 'Drone-01') {
-                    const telemetry = {
-                        lat: newLat,
-                        lng: newLng,
-                        alt: missionPhase === 'idle' ? 0 : 60,
-                        heading: Math.round(newHeading),
-                        battery: Math.round(newBattery),
-                        speed: parseFloat(speed.toFixed(2)),
-                        ts: Date.now(),
-                    };
-                    client.publish(`drone/${drone.id}/telemetry`, JSON.stringify(telemetry), { qos: 0 });
-                    if (missionPhase !== 'idle') {
-                        console.log(`[Simulation] ${drone.name} | Phase: ${missionPhase} | Lat: ${newLat.toFixed(5)}, Lng: ${newLng.toFixed(5)}`);
-                    }
-                }
+                // Publish telemetry
+                const telemetry = {
+                    lat: newLat,
+                    lng: newLng,
+                    alt: state.alt,
+                    heading: Math.round(newHeading),
+                    battery: Math.round(newBattery),
+                    speed: parseFloat(speed.toFixed(2)),
+                    status: drone.status,
+                    ts: Date.now(),
+                };
+                client.publish(`drone/${drone.id}/telemetry`, JSON.stringify(telemetry), { qos: 0 });
             }
         } catch (e) {
             console.error('[Simulation] Loop error:', e);
@@ -242,33 +221,26 @@ client.on('connect', async () => {
 });
 
 // Handle commands
-client.on('message', (topic, message) => {
-    console.log('\nReceived command:', message.toString());
+client.on('message', async (topic, message) => {
+    const parts = topic.split('/');
+    const droneId = parts[1];
+
+    console.log(`\n[MQTT] Command for ${droneId}:`, message.toString());
 
     try {
         const cmd = JSON.parse(message.toString());
+        const supabase = createServerClient();
 
-        switch (cmd.cmd) {
-            case 'takeoff':
-                console.log('Takeoff - climbing...');
-                droneState.alt = 10;
-                break;
-            case 'land':
-                console.log('Landing...');
-                droneState.alt = 0;
-                droneState.speed = 0;
-                break;
-            case 'return_home':
-                console.log('Returning home...');
-                droneState.lat = 51.4416;
-                droneState.lng = 5.4697;
-                break;
-            case 'unlock':
-                console.log('Unlocking storage');
-                break;
-            default:
-                console.log('Unknown command:', cmd.cmd);
+        // Unlock is a special case (maybe just log it)
+        if (cmd.cmd === 'unlock') {
+            console.log(`[Simulation] ${droneId} storage UNLOCKED!`);
+            return;
         }
+
+        // For other commands like takeoff, land, return_home - the API already updates the DB.
+        // We just log it here for confirmation.
+        console.log(`[Simulation] ${droneId} executing: ${cmd.cmd}`);
+
     } catch (error) {
         console.error('Failed to parse command:', error);
     }

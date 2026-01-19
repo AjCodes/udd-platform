@@ -6,39 +6,37 @@ import type { Delivery } from '@udd/shared';
 
 export default function DeliveriesPage() {
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-    const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'pending' | 'active'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'history'>('pending');
+
+    const pendingDeliveries = (deliveries || []).filter(d => d.status === 'pending');
+    const myDeliveries = (deliveries || []).filter(d => ['assigned', 'in_transit'].includes(d.status));
+    const historyDeliveries = (deliveries || []).filter(d => ['delivered', 'cancelled'].includes(d.status));
 
     useEffect(() => {
         loadDeliveries();
-        // Poll every 2 seconds to ensure updates are seen quickly
-        const interval = setInterval(loadDeliveries, 2000);
+        // Poll every 5 seconds to ensure updates are seen quickly
+        const interval = setInterval(loadDeliveries, 5000);
         return () => clearInterval(interval);
     }, []);
 
+    // Auto-switch tab if needed
+    useEffect(() => {
+        if (!loading && activeTab === 'pending' && pendingDeliveries.length === 0 && myDeliveries.length > 0) {
+            console.log('[DeliveriesPage] No pending deliveries, auto-switching to Active tab');
+            setActiveTab('active');
+        }
+    }, [pendingDeliveries.length, myDeliveries.length, loading, activeTab]);
+
     const loadDeliveries = async () => {
         try {
-            // Fetch pending deliveries
-            const pendingRes = await fetch('/api/deliveries/available', { cache: 'no-store' });
-            if (pendingRes.ok) {
-                const data = await pendingRes.json();
-                console.log('[DeliveriesPage] Pending deliveries loaded:', data.length);
+            const res = await fetch('/api/deliveries', { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                console.log('[DeliveriesPage] All deliveries loaded:', data.length);
                 setDeliveries(data || []);
             } else {
-                const errorData = await pendingRes.json().catch(() => ({}));
-                console.error('[DeliveriesPage] Failed to fetch pending deliveries:', pendingRes.status, errorData);
-            }
-
-            // Fetch my active deliveries
-            const activeRes = await fetch('/api/deliveries/my-active', { cache: 'no-store' });
-            if (activeRes.ok) {
-                const data = await activeRes.json();
-                console.log('[DeliveriesPage] Active deliveries loaded:', data.length);
-                setMyDeliveries(data || []);
-            } else {
-                const errorData = await activeRes.json().catch(() => ({}));
-                console.error('[DeliveriesPage] Failed to fetch active deliveries:', activeRes.status, errorData);
+                console.error('[DeliveriesPage] Failed to fetch deliveries:', res.status);
             }
         } catch (error) {
             console.error('[DeliveriesPage] Failed to load deliveries:', error);
@@ -46,14 +44,6 @@ export default function DeliveriesPage() {
             setLoading(false);
         }
     };
-
-    // Auto-switch tab if needed
-    useEffect(() => {
-        if (!loading && activeTab === 'pending' && deliveries.length === 0 && myDeliveries.length > 0) {
-            console.log('[DeliveriesPage] No pending deliveries, auto-switching to Active tab');
-            setActiveTab('active');
-        }
-    }, [deliveries.length, myDeliveries.length, loading, activeTab]);
 
     const claimDelivery = async (deliveryId: string) => {
         try {
@@ -98,11 +88,11 @@ export default function DeliveriesPage() {
     };
 
     const statusColors: Record<string, string> = {
-        pending: 'bg-yellow-500/20 text-yellow-400',
-        assigned: 'bg-blue-500/20 text-blue-400',
-        in_transit: 'bg-cyan-500/20 text-cyan-400',
-        delivered: 'bg-green-500/20 text-green-400',
-        cancelled: 'bg-gray-500/20 text-gray-400',
+        pending: 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400',
+        assigned: 'bg-blue-500/10 border border-blue-500/20 text-blue-400',
+        in_transit: 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400',
+        delivered: 'bg-green-500/10 border border-green-500/20 text-green-400',
+        cancelled: 'bg-red-500/10 border border-red-500/20 text-red-400',
     };
 
     if (loading) {
@@ -132,40 +122,44 @@ export default function DeliveriesPage() {
 
             <div className="p-6">
                 {/* Tabs */}
-                <div className="flex gap-2 mb-6">
+                <div className="flex gap-4 mb-8">
                     <button
                         onClick={() => setActiveTab('pending')}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'pending'
                             ? 'bg-cyan-600 text-white'
-                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            : 'bg-gray-800 text-gray-400 hover:text-white'
                             }`}
                     >
-                        Pending ({deliveries.length})
+                        Pending ({pendingDeliveries.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('active')}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'active'
                             ? 'bg-cyan-600 text-white'
-                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            : 'bg-gray-800 text-gray-400 hover:text-white'
                             }`}
                     >
                         My Active ({myDeliveries.length})
                     </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'history'
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        History ({historyDeliveries.length})
+                    </button>
                 </div>
 
-                {/* Pending Deliveries */}
-                {activeTab === 'pending' && (
-                    <div className="grid gap-4">
-                        {deliveries.length === 0 ? (
-                            <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center">
-                                <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                                <p className="text-gray-400">No pending deliveries</p>
-                                <p className="text-sm text-gray-500">Waiting for new orders...</p>
+                <div className="grid gap-6">
+                    {activeTab === 'pending' ? (
+                        pendingDeliveries.length === 0 ? (
+                            <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center text-gray-400">
+                                <p className="text-lg">No pending deliveries</p>
                             </div>
                         ) : (
-                            deliveries.map((delivery) => (
+                            pendingDeliveries.map((delivery) => (
                                 <div key={delivery.id} className="bg-gray-800 rounded-xl border border-gray-700 p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
@@ -173,46 +167,31 @@ export default function DeliveriesPage() {
                                             <p className="text-lg font-medium">{delivery.pickup_address || 'Pickup location'}</p>
                                             <p className="text-gray-400">→ {delivery.dropoff_address || 'Dropoff location'}</p>
                                         </div>
-                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[delivery.status]}`}>
-                                            Pending
-                                        </span>
+                                        <button
+                                            onClick={() => claimDelivery(delivery.id)}
+                                            className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
+                                        >
+                                            Claim Order
+                                        </button>
                                     </div>
-                                    {delivery.package_description && (
-                                        <p className="text-sm text-gray-400 mb-4">{delivery.package_description}</p>
-                                    )}
-                                    <div className="flex gap-4 text-sm text-gray-400 mb-4">
-                                        <span>📍 {delivery.pickup_lat.toFixed(4)}, {delivery.pickup_lng.toFixed(4)}</span>
-                                        <span>🎯 {delivery.dropoff_lat.toFixed(4)}, {delivery.dropoff_lng.toFixed(4)}</span>
+                                    <div className="text-sm text-gray-500">
+                                        {delivery.package_description && <p>📦 {delivery.package_description}</p>}
+                                        <p>👤 {delivery.sender_name} • 📱 {delivery.sender_phone}</p>
                                     </div>
-                                    <button
-                                        onClick={() => claimDelivery(delivery.id)}
-                                        className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
-                                    >
-                                        Claim Delivery
-                                    </button>
                                 </div>
                             ))
-                        )}
-                    </div>
-                )}
-
-                {/* My Active Deliveries */}
-                {activeTab === 'active' && (
-                    <div className="grid gap-4">
-                        {myDeliveries.length === 0 ? (
-                            <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center">
-                                <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                </svg>
-                                <p className="text-gray-400">No active deliveries</p>
-                                <p className="text-sm text-gray-500">Claim a delivery to get started</p>
+                        )
+                    ) : activeTab === 'active' ? (
+                        myDeliveries.length === 0 ? (
+                            <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center text-gray-400">
+                                <p className="text-lg">No active deliveries</p>
                             </div>
                         ) : (
                             myDeliveries.map((delivery) => (
-                                <div key={delivery.id} className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+                                <Link key={delivery.id} href={`/delivery/${delivery.id}`} className="block bg-gray-800 rounded-xl border border-gray-700 p-6 hover:border-cyan-500/50 transition-all cursor-pointer group">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <p className="text-sm text-gray-400">Order #{delivery.id.slice(0, 8)}</p>
+                                            <p className="text-sm text-gray-500 group-hover:text-cyan-400 transition-colors">Order #{delivery.id.slice(0, 8)}</p>
                                             <p className="text-lg font-medium">{delivery.pickup_address || 'Pickup location'}</p>
                                             <p className="text-gray-400">→ {delivery.dropoff_address || 'Dropoff location'}</p>
                                         </div>
@@ -220,22 +199,18 @@ export default function DeliveriesPage() {
                                             {delivery.status.replace('_', ' ').charAt(0).toUpperCase() + delivery.status.replace('_', ' ').slice(1)}
                                         </span>
                                     </div>
-                                    {(delivery as any).drones?.name && (
-                                        <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm font-medium">
-                                            <span>🛸 Assigned Drone:</span>
-                                            <span className="text-white font-bold">{(delivery as any).drones.name}</span>
+                                    {delivery.drone_id && (
+                                        <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                                            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">🚁 Assigned Drone: Drone-01</span>
                                         </div>
-                                    )}
-                                    {delivery.package_description && (
-                                        <p className="text-sm text-gray-400 mb-4">{delivery.package_description}</p>
                                     )}
                                     <div className="flex gap-4 text-sm text-gray-400 mb-4">
                                         <span>🔐 PIN: <span className="font-mono text-white">{delivery.pin}</span></span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 gap-3 mt-4" onClick={(e) => e.preventDefault()}>
                                         {delivery.status === 'assigned' && (
                                             <button
-                                                onClick={() => updateDeliveryStatus(delivery.id, 'in_transit')}
+                                                onClick={(e) => { e.stopPropagation(); updateDeliveryStatus(delivery.id, 'in_transit'); }}
                                                 className="py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
                                             >
                                                 Start Transit
@@ -243,7 +218,7 @@ export default function DeliveriesPage() {
                                         )}
                                         {delivery.status === 'in_transit' && (
                                             <button
-                                                onClick={() => updateDeliveryStatus(delivery.id, 'delivered')}
+                                                onClick={(e) => { e.stopPropagation(); updateDeliveryStatus(delivery.id, 'delivered'); }}
                                                 className="py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium transition-colors"
                                             >
                                                 Mark Delivered
@@ -253,16 +228,39 @@ export default function DeliveriesPage() {
                                             <Link
                                                 href={`/control/${delivery.drone_id}`}
                                                 className="py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-center"
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 Control Drone
                                             </Link>
                                         )}
                                     </div>
-                                </div>
+                                </Link>
                             ))
-                        )}
-                    </div>
-                )}
+                        )
+                    ) : (
+                        historyDeliveries.length === 0 ? (
+                            <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center text-gray-400">
+                                <p className="text-lg">No delivery history</p>
+                            </div>
+                        ) : (
+                            historyDeliveries.map((delivery) => (
+                                <Link key={delivery.id} href={`/delivery/${delivery.id}`} className="block bg-gray-800 rounded-xl border border-gray-700 p-6 hover:border-gray-600 transition-all cursor-pointer group">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-sm text-gray-500 group-hover:text-cyan-400 transition-colors">Order #{delivery.id.slice(0, 8)}</p>
+                                            <p className="text-lg font-medium">{delivery.pickup_address || 'Pickup location'}</p>
+                                            <p className="text-gray-400">→ {delivery.dropoff_address || 'Dropoff location'}</p>
+                                            <p className="text-xs text-gray-500 mt-2">Delivered on {new Date(delivery.updated_at).toLocaleString()}</p>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[delivery.status]}`}>
+                                            {delivery.status.replace('_', ' ').charAt(0).toUpperCase() + delivery.status.replace('_', ' ').slice(1)}
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))
+                        )
+                    )}
+                </div>
             </div>
         </div>
     );
